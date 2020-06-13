@@ -38,7 +38,7 @@ UniGen
 #include <cstdint>
 #include <mutex>
 #include <cryptominisat5/cryptominisat.h>
-
+#include <approxmc/approxmc.h>
 
 using std::string;
 using std::vector;
@@ -47,33 +47,7 @@ using std::cout;
 using std::endl;
 using namespace CMSat;
 
-struct SATCount {
-    void clear()
-    {
-        SATCount tmp;
-        *this = tmp;
-    }
-    bool valid = false;
-    uint32_t hashCount = 0;
-    uint32_t cellSolCount = 0;
-
-    void print_num_solutions() {
-        cout << "c [UniGen] Number of solutions is: "
-        << cellSolCount << "*2**" << hashCount << endl;
-
-        mpz_t num_sols;
-        mpz_init (num_sols);
-        mpz_ui_pow_ui(num_sols, 2, hashCount);
-        mpz_mul_ui(num_sols, num_sols, cellSolCount);
-
-        cout << "s mc " << std::flush;
-        mpz_out_str(0, 10, num_sols);
-        cout << endl;
-        mpz_clear(num_sols);
-
-    }
-};
-
+/*
 struct SavedModel
 {
     SavedModel(uint32_t _hash_num, const vector<lbool>& _model) :
@@ -114,11 +88,12 @@ struct SolNum {
     uint64_t solutions = 0;
     uint64_t repeated = 0;
 };
-
-
+*/ 
+//Commented out above but I think we should probably not expose the above structs via ApproxMC
+//
 class UniGen {
 public:
-    int solve(UniGenConfig _conf = NULL);
+    int solve(UniGenConfig _conf);
 
     uint32_t loThresh;
     uint32_t hiThresh;
@@ -128,7 +103,6 @@ public:
     void set_samples_file(std::ostream* os);
     std::mutex count_mutex;
     void print_final_count_stats(SATCount sol_count);
-    const Constants constants;
 
 private:
     UniGenConfig conf;

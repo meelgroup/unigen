@@ -63,7 +63,6 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GitSHA1.cpp.in" "${CMAKE_CURRENT_BIN
 
 set(unigen_lib_files
     unigen.cpp
-    constants.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp
 )
 
@@ -118,6 +117,7 @@ endforeach()
 
 add_executable(unigen-bin
     main.cpp
+    ${unigen_lib_files}
 )
 
 set(unigen_exec_link_libs
@@ -130,7 +130,7 @@ IF (ZLIB_FOUND)
 ENDIF()
 
 target_link_libraries(unigen-bin
-    ${cms_libs}
+    ${CRYPTOMINISAT5_LIBRARIES}
     ${APPROXMC_LIBRARIES}
     ${unigen_exec_link_libs}
     unigen

@@ -456,6 +456,9 @@ endif()
 # Provide an export name to be used by targets that wish to export themselves.
 # -----------------------------------------------------------------------------
 find_package(approxmc CONFIG)
+
+set(APPROXMC_INCLUDE_DIRS,"/usr/local/include")
+set(APPROXMC_LIBRARIES, "/home/meel/Research/MeelGroup-Projects/scalgen/build/lib/libapproxmc.so")
 if (approxmc_FOUND)
     message(STATUS "Found approxmc")
     message(STATUS "approxmc dynamic lib: ${APPROXMC_LIBRARIES}")

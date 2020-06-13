@@ -36,9 +36,11 @@ using std::vector;
 #endif
 #include <signal.h>
 
-#include "approxmcconfig.h"
+#include "unigenconfig.h"
+#include "unigen.h"
 #include "time_mem.h"
-#include "approxmc.h"
+#include "approxmc/approxmc.h"
+
 #include <cryptominisat5/cryptominisat.h>
 #include "cryptominisat5/dimacsparser.h"
 #include "cryptominisat5/streambuffer.h"
@@ -48,7 +50,7 @@ using std::cout;
 using std::cerr;
 using std::endl;
 string command_line;
-UniGen* UniGen = NULL;
+UniGen* unigen = NULL;
 
 UniGenConfig conf;
 po::options_description UniGen_options = po::options_description("Main options");
@@ -67,12 +69,8 @@ void SIGINT_handler(int)
 
 void add_UniGen_options()
 {
-    std::ostringstream my_epsilon;
-    std::ostringstream my_delta;
     std::ostringstream my_kappa;
 
-    my_epsilon << std::setprecision(8) << conf.epsilon;
-    my_delta << std::setprecision(8) << conf.delta;
     my_kappa << std::setprecision(8) << conf.kappa;
 
     UniGen_options.add_options()
@@ -145,7 +143,7 @@ void add_supported_options(int argc, char** argv)
         }
 
         if (vm.count("version")) {
-            UniGen->printVersionInfo();
+            unigen->printVersionInfo();
             std::exit(0);
         }
 
@@ -240,7 +238,7 @@ void readInAFile(SATSolver* solver2, const string& filename)
     DimacsParser<StreamBuffer<FILE*, FN> > parser(solver, NULL, 2);
     #else
     gzFile in = gzopen(filename.c_str(), "rb");
-    DimacsParser<StreamBuffer<gzFile, GZ> > parser(UniGen->solver, NULL, 2);
+    DimacsParser<StreamBuffer<gzFile, GZ> > parser(unigen->solver, NULL, 2);
     #endif
 
     if (in == NULL) {
@@ -306,7 +304,7 @@ void set_sampling_vars()
         << "c [UniGen] WARNING! Sampling set was not declared with 'c ind var1 [var2 var3 ..] 0'"
         " notation in the CNF." << endl
         << "c [UniGen] we may work substantially worse!" << endl;
-        for (size_t i = 0; i < UniGen->solver->nVars(); i++) {
+        for (size_t i = 0; i < unigen->solver->nVars(); i++) {
             conf.sampling_set.push_back(i);
         }
     }
@@ -322,7 +320,7 @@ void set_sampling_vars()
         }
         cout << endl;
     }
-    UniGen->solver->set_sampling_vars(&conf.sampling_set);
+    unigen->solver->set_sampling_vars(&conf.sampling_set);
 }
 
 std::ostream* open_samples_file()
@@ -369,9 +367,9 @@ int main(int argc, char** argv)
         }
     }
 
-    UniGen = new UniGen;
+    UniGen *unigen = new UniGen;
     add_supported_options(argc, argv);
-    UniGen->printVersionInfo();
+    unigen->printVersionInfo();
     cout
     << "c executed with command line: "
     << command_line
@@ -395,28 +393,19 @@ int main(int argc, char** argv)
     }
 
     //startTime = cpuTimeTotal();
-    UniGen->solver = new SATSolver();
-    UniGen->solver->set_up_for_scalmc();
+    unigen->solver = new SATSolver();
+    unigen->solver->set_up_for_scalmc();
 
     if (conf.verb > 2) {
-        UniGen->solver->set_verbosity(conf.verb-2);
+        unigen->solver->set_verbosity(conf.verb-2);
     }
-    UniGen->solver->set_allow_otf_gauss();
-    UniGen->solver->set_xor_detach(conf.cms_detach_xor);
+    unigen->solver->set_allow_otf_gauss();
+    unigen->solver->set_xor_detach(conf.cms_detach_xor);
 
     if (conf.num_threads > 1) {
-        UniGen->solver->set_num_threads(conf.num_threads);
+        unigen->solver->set_num_threads(conf.num_threads);
     }
 
-    if (conf.epsilon < 0.0) {
-        cout << "[UniGen] ERROR: invalid epsilon" << endl;
-        exit(-1);
-    }
-
-    if (conf.delta <= 0.0 || conf.delta > 1.0) {
-        cout << "[UniGen] ERROR: invalid delta" << endl;
-        exit(-1);
-    }
     
     if (conf.samples < 0) {
         cout << "[UniGen] ERROR: The number of samples should be greater than zero" << endl;
@@ -428,14 +417,14 @@ int main(int argc, char** argv)
         if (inp.size() > 1) {
             cout << "[UniGen] ERROR: can only parse in one file" << endl;
         }
-        readInAFile(UniGen->solver, inp[0].c_str());
+        readInAFile(unigen->solver, inp[0].c_str());
     } else {
-        readInStandardInput(UniGen->solver);
+        readInStandardInput(unigen->solver);
     }
     set_sampling_vars();
 
     std::ostream* out = open_samples_file();
-    UniGen->set_samples_file(out);
+    unigen->set_samples_file(out);
 
     //Counting
     if (conf.samples > 0 && conf.startiter == 0) {
@@ -448,7 +437,7 @@ int main(int argc, char** argv)
         exit(-1);
     }
 
-    auto ret = UniGen->solve(conf);
+    auto ret = unigen->solve(conf);
     if (out != &cout) {
         delete out;
     }

@@ -51,6 +51,7 @@
 #include "cryptominisat5/cryptominisat.h"
 #include "cryptominisat5/solvertypesmini.h"
 #include "GitSHA1.h"
+#include "unigen.h"
 
 using std::cout;
 using std::cerr;
@@ -320,9 +321,9 @@ int UniGen::solve(UniGenConfig _conf)
     if (conf.startiter == 0) {
         std::ostream* backup = samples_out;
         samples_out = NULL;
-        AppMC counter = new AppMC;
+        AppMC *counter = new AppMC;
         AppMCConfig appconf; //should set the default parameters
-        SATCount solCount = counter->count(appconf);
+        SATCount solCount = counter->solve(appconf);
         cout << "c [UniGen] finished counting solutions in "
         << (cpuTimeTotal() - startTime) << " s" << endl;
 
@@ -489,7 +490,7 @@ uint32_t UniGen::gen_n_samples(
         for (uint32_t j = 0; j < 3; j++) {
             uint32_t currentHashOffset = hashOffsets[j];
             uint32_t currentHashCount = currentHashOffset + conf.startiter;
-            const vector<Lit> assumps = set_num_hashes(currentHashCount, hashes, sparse_data);
+            const vector<Lit> assumps = set_num_hashes(currentHashCount, hashes);
 
             double myTime = cpuTime();
             const uint64_t solutionCount = bounded_sol_count(
