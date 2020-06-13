@@ -439,6 +439,7 @@ else()
 endif()
 
 find_package(cryptominisat5 CONFIG)
+
 if (cryptominisat5_FOUND)
     message(STATUS "Found CryptoMiniSat 5.x")
     message(STATUS "CryptoMiniSat5 dynamic lib: ${CRYPTOMINISAT5_LIBRARIES}")
@@ -454,6 +455,17 @@ endif()
 # -----------------------------------------------------------------------------
 # Provide an export name to be used by targets that wish to export themselves.
 # -----------------------------------------------------------------------------
+find_package(approxmc CONFIG)
+if (approxmc_FOUND)
+    message(STATUS "Found approxmc")
+    message(STATUS "approxmc dynamic lib: ${APPROXMC_LIBRARIES}")
+    message(STATUS "approxmc static lib:  ${APPROXMC_STATIC_LIBRARIES}")
+    message(STATUS "approxmc static lib deps: ${APPROXMC_STATIC_LIBRARIES_DEPS}")
+    message(STATUS "approxmc include dirs: ${APPROXMC_INCLUDE_DIRS}")
+else()
+    message(FATAL_ERROR "Cannot find ApproxMC. Please install it! Exiting.")
+endif()
+
 set(unigen_EXPORT_NAME "unigenTargets")
 
 add_subdirectory(src apx-src)

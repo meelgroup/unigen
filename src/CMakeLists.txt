@@ -56,6 +56,7 @@ endmacro()
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${CRYPTOMINISAT5_INCLUDE_DIRS})
+include_directories(${APPROXMC_INCLUDE_DIRS})
 include_directories(${GMP_INCLUDE_DIRS})
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GitSHA1.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp" @ONLY)
@@ -78,7 +79,7 @@ set_target_properties(unigen PROPERTIES
 )
 
 install(TARGETS unigen
-    EXPORT ${CRYPTOMINISAT5_EXPORT_NAME}
+    EXPORT ${APPROXMC_EXPORT_NAME}
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
@@ -130,7 +131,7 @@ ENDIF()
 
 target_link_libraries(unigen-bin
     ${cms_libs}
-    ${CRYPTOMINISAT5_LIBRARIES}
+    ${APPROXMC_LIBRARIES}
     ${unigen_exec_link_libs}
     unigen
 )
