@@ -1,7 +1,7 @@
 /*
- ApproxMC and gen_n_samples
+ UniGen
 
- Copyright (c) 2009-2018, Mate Soos. All rights reserved.
+ Copyright (c) 2019-2020, Mate Soos and Kuldeep S. Meel. All rights reserved
  Copyright (c) 2015, Supratik Chakraborty, Daniel J. Fremont,
  Kuldeep S. Meel, Sanjit A. Seshia, Moshe Y. Vardi
  Copyright (c) 2014, Supratik Chakraborty, Kuldeep S. Meel, Moshe Y. Vardi
@@ -48,12 +48,12 @@ using std::cout;
 using std::cerr;
 using std::endl;
 string command_line;
-AppMC* appmc = NULL;
+UniGen* UniGen = NULL;
 
-AppMCConfig conf;
-po::options_description appmc_options = po::options_description("Main options");
-po::options_description appmcgen_options = po::options_description("Sampling options");
-po::options_description appmc4_options = po::options_description("ApproxMC4 paper options");
+UniGenConfig conf;
+po::options_description UniGen_options = po::options_description("Main options");
+po::options_description UniGengen_options = po::options_description("Sampling options");
+po::options_description UniGen4_options = po::options_description("ApproxMC4 paper options");
 po::options_description help_options;
 po::variables_map vm;
 po::positional_options_description p;
@@ -61,21 +61,11 @@ po::positional_options_description p;
 //signal code
 void SIGINT_handler(int)
 {
-    if (!appmc) {
-        return;
-    }
-    SATCount solCount = appmc->calc_est_count();
-    if (!solCount.valid) {
-        cout << "c did not manage to get a single measurement, we have no estimate of the count" << endl;
-        exit(-1);
-    }
-    cout << "c Below count is NOT FULLY APPROXIMIATE due to early-abort!" << endl;
-    solCount.print_num_solutions();
-    exit(-1);
+    return; //Perhaps we should output all the generated samples so far
 }
 
 
-void add_appmc_options()
+void add_UniGen_options()
 {
     std::ostringstream my_epsilon;
     std::ostringstream my_delta;
@@ -85,26 +75,20 @@ void add_appmc_options()
     my_delta << std::setprecision(8) << conf.delta;
     my_kappa << std::setprecision(8) << conf.kappa;
 
-    appmc_options.add_options()
+    UniGen_options.add_options()
     ("help,h", "Prints help")
     ("version", "Print version info")
     ("input", po::value< vector<string> >(), "file(s) to read")
     ("verb,v", po::value(&conf.verb)->default_value(conf.verb), "verbosity")
     ("seed,s", po::value(&conf.seed)->default_value(conf.seed), "Seed")
-    ("epsilon", po::value(&conf.epsilon)->default_value(conf.epsilon, my_epsilon.str())
-        , "epsilon parameter as per PAC guarantees")
-    ("delta", po::value(&conf.delta)->default_value(conf.delta, my_delta.str())
-        , "delta parameter as per PAC guarantees; 1-delta is the confidence")
     ("start", po::value(&conf.startiter)->default_value(conf.startiter),
          "Start at this many XORs")
     ("log", po::value(&conf.logfilename)->default_value(conf.logfilename),
          "Logs of ApproxMC execution")
     ("th", po::value(&conf.num_threads)->default_value(conf.num_threads),
          "How many solving threads to use per solver call")
-    ("vcl", po::value(&conf.verb_appmc_cls)->default_value(conf.verb_appmc_cls)
+    ("vcl", po::value(&conf.verb_UniGen_cls)->default_value(conf.verb_UniGen_cls)
         ,"Print banning clause + xor clauses. Highly verbose.")
-    ("sparse", po::value(&conf.sparse)->default_value(conf.sparse)
-        , "Generate sparse XORs when possible")
     ("simplify", po::value(&conf.simplify)->default_value(conf.simplify)
         , "Simplify agressiveness")
     //blasted_TR_ptb_1_linear.cnf.gz.no_w.cnf.gz is sensitive to below.
@@ -114,7 +98,7 @@ void add_appmc_options()
     ;
 
     //Improvements from ApproxMC4 paper
-    appmc4_options.add_options()
+    UniGen4_options.add_options()
     ("detachxor", po::value(&conf.cms_detach_xor)->default_value(conf.cms_detach_xor)
         , "Detach XORs in CMS")
     ("reusemodels", po::value(&conf.reuse_models)->default_value(conf.reuse_models)
@@ -122,7 +106,7 @@ void add_appmc_options()
     ("forcesolextension", po::value(&conf.force_sol_extension)->default_value(conf.force_sol_extension)
         , "Use trick of not extending solutions in the SAT solver to full solution");
 
-    appmcgen_options.add_options()
+    UniGengen_options.add_options()
     ("samples", po::value(&conf.samples)->default_value(conf.samples)
         , "Number of random samples to generate")
     ("indepsamples", po::value(&conf.only_indep_samples)->default_value(conf.only_indep_samples)
@@ -136,14 +120,14 @@ void add_appmc_options()
 
     ;
 
-    help_options.add(appmc_options);
-    help_options.add(appmcgen_options);
-    help_options.add(appmc4_options);
+    help_options.add(UniGen_options);
+    help_options.add(UniGengen_options);
+    help_options.add(UniGen4_options);
 }
 
 void add_supported_options(int argc, char** argv)
 {
-    add_appmc_options();
+    add_UniGen_options();
     p.add("input", 1);
 
     try {
@@ -161,7 +145,7 @@ void add_supported_options(int argc, char** argv)
         }
 
         if (vm.count("version")) {
-            appmc->printVersionInfo();
+            UniGen->printVersionInfo();
             std::exit(0);
         }
 
@@ -256,7 +240,7 @@ void readInAFile(SATSolver* solver2, const string& filename)
     DimacsParser<StreamBuffer<FILE*, FN> > parser(solver, NULL, 2);
     #else
     gzFile in = gzopen(filename.c_str(), "rb");
-    DimacsParser<StreamBuffer<gzFile, GZ> > parser(appmc->solver, NULL, 2);
+    DimacsParser<StreamBuffer<gzFile, GZ> > parser(UniGen->solver, NULL, 2);
     #endif
 
     if (in == NULL) {
@@ -319,26 +303,26 @@ void set_sampling_vars()
 {
     if (conf.sampling_set.empty()) {
         cout
-        << "c [appmc] WARNING! Sampling set was not declared with 'c ind var1 [var2 var3 ..] 0'"
+        << "c [UniGen] WARNING! Sampling set was not declared with 'c ind var1 [var2 var3 ..] 0'"
         " notation in the CNF." << endl
-        << "c [appmc] we may work substantially worse!" << endl;
-        for (size_t i = 0; i < appmc->solver->nVars(); i++) {
+        << "c [UniGen] we may work substantially worse!" << endl;
+        for (size_t i = 0; i < UniGen->solver->nVars(); i++) {
             conf.sampling_set.push_back(i);
         }
     }
-    cout << "c [appmc] Sampling set size: " << conf.sampling_set.size() << endl;
+    cout << "c [UniGen] Sampling set size: " << conf.sampling_set.size() << endl;
     if (conf.sampling_set.size() > 100) {
         cout
-        << "c [appmc] Sampling var set contains over 100 variables, not displaying"
+        << "c [UniGen] Sampling var set contains over 100 variables, not displaying"
         << endl;
     } else {
-        cout << "c [appmc] Sampling set: ";
+        cout << "c [UniGen] Sampling set: ";
         for (auto v: conf.sampling_set) {
             cout << v+1 << ", ";
         }
         cout << endl;
     }
-    appmc->solver->set_sampling_vars(&conf.sampling_set);
+    UniGen->solver->set_sampling_vars(&conf.sampling_set);
 }
 
 std::ostream* open_samples_file()
@@ -385,22 +369,22 @@ int main(int argc, char** argv)
         }
     }
 
-    appmc = new AppMC;
+    UniGen = new UniGen;
     add_supported_options(argc, argv);
-    appmc->printVersionInfo();
+    UniGen->printVersionInfo();
     cout
     << "c executed with command line: "
     << command_line
     << endl;
 
-    cout << "c [appmc] using seed: " << conf.seed << endl;
+    cout << "c [UniGen] using seed: " << conf.seed << endl;
 
     if (vm.count("log") == 0) {
         if (vm.count("input") != 0) {
             conf.logfilename = vm["input"].as<vector<string> >()[0] + ".log";
-            cout << "c [appmc] Logfile name not given, assumed to be " << conf.logfilename << endl;
+            cout << "c [UniGen] Logfile name not given, assumed to be " << conf.logfilename << endl;
         } else {
-            std::cerr << "[appmc] ERROR: You must provide the logfile name" << endl;
+            std::cerr << "[UniGen] ERROR: You must provide the logfile name" << endl;
             exit(-1);
         }
     }
@@ -411,58 +395,60 @@ int main(int argc, char** argv)
     }
 
     //startTime = cpuTimeTotal();
-    appmc->solver = new SATSolver();
-    appmc->solver->set_up_for_scalmc();
+    UniGen->solver = new SATSolver();
+    UniGen->solver->set_up_for_scalmc();
 
     if (conf.verb > 2) {
-        appmc->solver->set_verbosity(conf.verb-2);
+        UniGen->solver->set_verbosity(conf.verb-2);
     }
-    appmc->solver->set_allow_otf_gauss();
-    appmc->solver->set_xor_detach(conf.cms_detach_xor);
+    UniGen->solver->set_allow_otf_gauss();
+    UniGen->solver->set_xor_detach(conf.cms_detach_xor);
 
     if (conf.num_threads > 1) {
-        appmc->solver->set_num_threads(conf.num_threads);
+        UniGen->solver->set_num_threads(conf.num_threads);
     }
 
     if (conf.epsilon < 0.0) {
-        cout << "[appmc] ERROR: invalid epsilon" << endl;
+        cout << "[UniGen] ERROR: invalid epsilon" << endl;
         exit(-1);
     }
 
     if (conf.delta <= 0.0 || conf.delta > 1.0) {
-        cout << "[appmc] ERROR: invalid delta" << endl;
+        cout << "[UniGen] ERROR: invalid delta" << endl;
         exit(-1);
+    }
+    
+    if (conf.samples < 0) {
+        cout << "[UniGen] ERROR: The number of samples should be greater than zero" << endl;
     }
 
     //parsing the input
     if (vm.count("input") != 0) {
         vector<string> inp = vm["input"].as<vector<string> >();
         if (inp.size() > 1) {
-            cout << "[appmc] ERROR: can only parse in one file" << endl;
+            cout << "[UniGen] ERROR: can only parse in one file" << endl;
         }
-        readInAFile(appmc->solver, inp[0].c_str());
+        readInAFile(UniGen->solver, inp[0].c_str());
     } else {
-        readInStandardInput(appmc->solver);
+        readInStandardInput(UniGen->solver);
     }
     set_sampling_vars();
 
     std::ostream* out = open_samples_file();
-    if (conf.samples > 0) {
-        appmc->set_samples_file(out);
-    }
+    UniGen->set_samples_file(out);
 
     //Counting
     if (conf.samples > 0 && conf.startiter == 0) {
-        cout << "c [appmc] Using appmc to compute startiter for gen_n_samples" << endl;
+        cout << "c [UniGen] Using UniGen to compute startiter for gen_n_samples" << endl;
     }
 
     if (conf.startiter > conf.sampling_set.size()) {
-        cout << "c [appmc] ERROR: Manually-specified start_iter"
+        cout << "c [UniGen] ERROR: Manually-specified start_iter"
              "is larger than the size of the sampling set.\n" << endl;
         exit(-1);
     }
 
-    auto ret = appmc->solve(conf);
+    auto ret = UniGen->solve(conf);
     if (out != &cout) {
         delete out;
     }
