@@ -322,6 +322,7 @@ int UniGen::solve(UniGenConfig _conf)
         std::ostream* backup = samples_out;
         samples_out = NULL;
         AppMC *counter = new AppMC;
+        counter->solver = solver;
         AppMCConfig appconf; //should set the default parameters
         SATCount solCount = counter->solve(appconf);
         cout << "c [UniGen] finished counting solutions in "
