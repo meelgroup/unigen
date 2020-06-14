@@ -78,7 +78,7 @@ set_target_properties(unigen PROPERTIES
 )
 
 install(TARGETS unigen
-    EXPORT ${APPROXMC_EXPORT_NAME}
+    EXPORT ${UNIGEN_EXPORT_NAME}
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
@@ -87,15 +87,6 @@ install(TARGETS unigen
 
 unigen_add_public_header(unigen ${CMAKE_CURRENT_SOURCE_DIR}/unigen.h )
 unigen_add_public_header(unigen ${CMAKE_CURRENT_SOURCE_DIR}/unigenconfig.h )
-
-#     set_target_properties(
-#       unigen PROPERTIES LINK_FLAGS "-s WASM=1 -s ALLOW_MEMORY_GROWTH=1 -s EXTRA_EXPORTED_RUNTIME_METHODS='[\"ccall\", \"cwrap\"]'  -s LINKABLE=1 -s EXPORT_ALL=1"
-#     )
-#
-#
-#     SET_SOURCE_FILES_PROPERTIES(main_min.cpp
-#         PROPERTIES COMPILE_FLAGS "-s WASM=1 -s ALLOW_MEMORY_GROWTH=1 -s EXTRA_EXPORTED_RUNTIME_METHODS='[\"ccall\", \"cwrap\"]'  -s LINKABLE=1 -s EXPORT_ALL=1"
-#     )
 
 
 # -----------------------------------------------------------------------------

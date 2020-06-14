@@ -45,11 +45,6 @@ if(POLICY CMP0026)
 endif()
 
 # -----------------------------------------------------------------------------
-# Provide scripts dir for included cmakes to use
-# -----------------------------------------------------------------------------
-set(unigenS_SCRIPTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/scripts)
-
-# -----------------------------------------------------------------------------
 # Make RelWithDebInfo the default build type if otherwise not set
 # -----------------------------------------------------------------------------
 set(build_types Debug Release RelWithDebInfo MinSizeRel)
@@ -284,12 +279,16 @@ endif()
 
 
 # -----------------------------------------------------------------------------
-# Uncomment these for static compilation under Linux (messes up Valgrind)
+# Perhaps not needed?
 # -----------------------------------------------------------------------------
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(CMAKE_EXE_LINKER_FLAGS " ${CMAKE_EXE_LINKER_FLAGS} -Wl,--discard-all -Wl,--build-id=sha1")
 endif()
 
+
+# -----------------------------------------------------------------------------
+# Staticcompile on Linux
+# -----------------------------------------------------------------------------
 if ((${CMAKE_SYSTEM_NAME} MATCHES "Linux") OR (${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
     if(STATICCOMPILE)
         MESSAGE(STATUS "Compiling for static library use")
@@ -315,9 +314,9 @@ if ((${CMAKE_SYSTEM_NAME} MATCHES "Linux") OR (${CMAKE_SYSTEM_NAME} MATCHES "Dar
     endif()
 endif()
 
-if(NOT MSVC)
-  set(DEF_INSTALL_CMAKE_DIR lib/cmake/unigen)
-endif()
+set(DEF_INSTALL_CMAKE_DIR lib/cmake/unigen)
+set(UNIGEN_INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH
+    "Installation directory for unigen CMake files")
 
 # -----------------------------------------------------------------------------
 # Add GIT version
@@ -348,14 +347,6 @@ MESSAGE(STATUS "PROJECT_VERSION_MAJOR: ${PROJECT_VERSION_MAJOR}")
 MESSAGE(STATUS "PROJECT_VERSION_MINOR: ${PROJECT_VERSION_MINOR}")
 MESSAGE(STATUS "PROJECT_VERSION_PATCH: ${PROJECT_VERSION_PATCH}")
 
-
-option(EMSCRIPTEN "Generate only emscripten JS" OFF)
-if (NOT EMSCRIPTEN)
-    set (boost_components "")
-    set(boost_components ${boost_components} program_options)
-    find_package( Boost 1.46 COMPONENTS ${boost_components})
-endif()
-
 # ----------
 # manpage
 # ----------
@@ -385,24 +376,6 @@ else()
     MESSAGE(STATUS "Not on Linux, not creating manpage")
 endif()
 
-# -----------------------------------------------------------------------------
-# Look for ZLIB (For reading zipped CNFs)
-# -----------------------------------------------------------------------------
-option(NOZLIB "Don't use zlib" OFF)
-
-# cannot currently compile static zlib under Windows
-if (NOT NOZLIB AND NOT (STATICCOMPILE AND WIN32))
-    find_package(ZLIB)
-    IF (ZLIB_FOUND)
-        MESSAGE(STATUS "OK, Found ZLIB!")
-        include_directories(${ZLIB_INCLUDE_DIR})
-        link_directories(${ZLIB_LIB_DIR})
-        add_definitions( -DUSE_ZLIB )
-    ELSE (ZLIB_FOUND)
-        MESSAGE(STATUS "WARNING: Did not find ZLIB, gzipped file support will be disabled")
-    ENDIF (ZLIB_FOUND)
-endif()
-
 #query definitions
 get_directory_property( DirDefs DIRECTORY ${CMAKE_SOURCE_DIR} COMPILE_DEFINITIONS )
 set(COMPILE_DEFINES)
@@ -415,6 +388,10 @@ message(STATUS "All defines at startup: ${COMPILE_DEFINES}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
 
+
+# -----------------------------------------------------------------------------
+# headers
+# -----------------------------------------------------------------------------
 macro(unigen_add_public_header LIBTARGET HEADER)
     get_target_property(EXISTING_PUBLIC_HEADERS ${LIBTARGET} PUBLIC_HEADER)
     if(EXISTING_PUBLIC_HEADERS)
@@ -430,6 +407,26 @@ macro(unigen_add_public_header LIBTARGET HEADER)
      )
 endmacro()
 
+# -----------------------------------------------------------------------------
+# Dependencies
+# -----------------------------------------------------------------------------
+set(boost_components "")
+set(boost_components ${boost_components} program_options)
+find_package( Boost 1.46 COMPONENTS ${boost_components})
+
+option(NOZLIB "Don't use zlib" OFF)
+if (NOT NOZLIB AND NOT (STATICCOMPILE AND WIN32))
+    find_package(ZLIB)
+    IF (ZLIB_FOUND)
+        MESSAGE(STATUS "OK, Found ZLIB!")
+        include_directories(${ZLIB_INCLUDE_DIR})
+        link_directories(${ZLIB_LIB_DIR})
+        add_definitions( -DUSE_ZLIB )
+    ELSE (ZLIB_FOUND)
+        MESSAGE(STATUS "WARNING: Did not find ZLIB, gzipped file support will be disabled")
+    ENDIF (ZLIB_FOUND)
+endif()
+
 find_package(GMP)
 if (GMP_FOUND)
     message(STATUS "GMP dynamic lib: ${GMP_LIBRARY}")
@@ -439,7 +436,6 @@ else()
 endif()
 
 find_package(cryptominisat5 CONFIG)
-
 if (cryptominisat5_FOUND)
     message(STATUS "Found CryptoMiniSat 5.x")
     message(STATUS "CryptoMiniSat5 dynamic lib: ${CRYPTOMINISAT5_LIBRARIES}")
@@ -449,29 +445,26 @@ if (cryptominisat5_FOUND)
 else()
     message(FATAL_ERROR "Cannot find CryptoMiniSat5. Please install it! Exiting.")
 endif()
-# set(CRYPTOMINISAT5_INCLUDE_DIRS "/usr/local/include/")
-# set(CRYPTOMINISAT5_LIBRARIES "/usr/local/lib/libcryptominisat5.so")
 
-# -----------------------------------------------------------------------------
-# Provide an export name to be used by targets that wish to export themselves.
-# -----------------------------------------------------------------------------
 find_package(approxmc CONFIG)
-
-set(APPROXMC_INCLUDE_DIRS,"/usr/local/include")
-set(APPROXMC_LIBRARIES, "/home/meel/Research/MeelGroup-Projects/scalgen/build/lib/libapproxmc.so")
 if (approxmc_FOUND)
     message(STATUS "Found approxmc")
-    message(STATUS "approxmc dynamic lib: ${APPROXMC_LIBRARIES}")
-    message(STATUS "approxmc static lib:  ${APPROXMC_STATIC_LIBRARIES}")
-    message(STATUS "approxmc static lib deps: ${APPROXMC_STATIC_LIBRARIES_DEPS}")
-    message(STATUS "approxmc include dirs: ${APPROXMC_INCLUDE_DIRS}")
+    message(STATUS "ApproxMC dynamic lib: ${APPROXMC_LIBRARIES}")
+    message(STATUS "ApproxMC static lib:  ${APPROXMC_STATIC_LIBRARIES}")
+    message(STATUS "ApproxMC static lib deps: ${APPROXMC_STATIC_LIBRARIES_DEPS}")
+    message(STATUS "ApproxMC include dirs: ${APPROXMC_INCLUDE_DIRS}")
 else()
     message(FATAL_ERROR "Cannot find ApproxMC. Please install it! Exiting.")
 endif()
 
-set(unigen_EXPORT_NAME "unigenTargets")
+# -----------------------------------------------------------------------------
+# Provide an export name to be used by targets that wish to export themselves.
+# -----------------------------------------------------------------------------
+set(UNIGEN_EXPORT_NAME "unigenTargets")
 
-add_subdirectory(src apx-src)
+find_package(approxmc CONFIG)
+
+add_subdirectory(src unig-src)
 
 # -----------------------------------------------------------------------------
 # Add uninstall target for makefiles
@@ -505,42 +498,46 @@ endif()
 # Export our targets so that other CMake based projects can interface with
 # the build of unigen in the build-tree
 # -----------------------------------------------------------------------------
-set(unigen_TARGETS_FILENAME "unigenTargets.cmake")
-set(unigen_CONFIG_FILENAME "unigenConfig.cmake")
+set(UNIGEN_TARGETS_FILENAME "unigenTargets.cmake")
+set(UNIGEN_CONFIG_FILENAME "unigenConfig.cmake")
 
 # Export targets
 set(MY_TARGETS unigen)
 export(
     TARGETS ${MY_TARGETS}
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/${unigen_TARGETS_FILENAME}"
+    FILE "${CMAKE_CURRENT_BINARY_DIR}/${UNIGEN_TARGETS_FILENAME}"
 )
 
 # Create unigenConfig file
 set(EXPORT_TYPE "Build-tree")
 set(CONF_INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}/include")
 configure_file(unigenConfig.cmake.in
-    "${CMAKE_CURRENT_BINARY_DIR}/${unigen_CONFIG_FILENAME}" @ONLY
+    "${CMAKE_CURRENT_BINARY_DIR}/${UNIGEN_CONFIG_FILENAME}" @ONLY
 )
 
-set(unigen_INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH
-    "Installation directory for unigen CMake files")
+# Export this package to the CMake user package registry
+# Now the user can just use find_package(cryptominisat5) on their system
+export(PACKAGE unigen)
 
+set(DEF_INSTALL_CMAKE_DIR lib/cmake/unigen)
+set(UNIGEN_INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH
+    "Installation directory for unigen CMake files")
 
 
 # Create unigenConfig file
 set(EXPORT_TYPE "installed")
 set(CONF_INCLUDE_DIRS "${CMAKE_INSTALL_PREFIX}/include")
 configure_file(unigenConfig.cmake.in
-   "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/${unigen_CONFIG_FILENAME}" @ONLY
+   "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/${UNIGEN_CONFIG_FILENAME}" @ONLY
 )
 
 install(FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/${unigen_CONFIG_FILENAME}"
-    DESTINATION "${unigen_INSTALL_CMAKE_DIR}"
+    "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/${UNIGEN_CONFIG_FILENAME}"
+    DESTINATION "${UNIGEN_INSTALL_CMAKE_DIR}"
 )
 
 # Install the export set for use with the install-tree
 install(
-    EXPORT ${unigen_EXPORT_NAME}
-    DESTINATION "${unigen_INSTALL_CMAKE_DIR}"
+    EXPORT ${UNIGEN_EXPORT_NAME}
+    DESTINATION "${UNIGEN_INSTALL_CMAKE_DIR}"
 )
