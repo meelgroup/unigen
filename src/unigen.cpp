@@ -43,10 +43,7 @@
 #include <array>
 #include <cmath>
 #include <complex>
-//#include <coz.h>
 
-#include "approxmc/approxmc.h"
-#include "approxmc/approxmcconfig.h"
 #include "time_mem.h"
 #include "cryptominisat5/cryptominisat.h"
 #include "cryptominisat5/solvertypesmini.h"
@@ -58,6 +55,7 @@ using std::cerr;
 using std::endl;
 using std::list;
 using std::map;
+using ApproxMC::SolCount;
 
 Hash UniGen::add_hash(uint32_t hash_index)
 {
@@ -284,25 +282,9 @@ SolNum UniGen::bounded_sol_count(
     return SolNum(solutions, repeat);
 }
 
-void UniGen::print_final_count_stats(SATCount solCount)
+void UniGen::sample(SATSolver* _solver, ApproxMC::SolCount solCount)
 {
-    cout << "c [UniGen] FINISHED UniGen T: "
-    << (cpuTimeTotal() - startTime) << " s"
-    << endl;
-
-    if (solCount.hashCount == 0 && solCount.cellSolCount == 0) {
-        cout << "c [UniGen] Formula was UNSAT " << endl;
-    }
-
-    if (conf.verb > 2) {
-        solver->print_stats();
-    }
-    solCount.print_num_solutions();
-}
-
-int UniGen::solve(UniGenConfig _conf)
-{
-    conf = _conf;
+    solver = _solver;
     orig_num_vars = solver->nVars();
     startTime = cpuTimeTotal();
 
@@ -318,41 +300,26 @@ int UniGen::solve(UniGenConfig _conf)
     threshold_UniGengen = ceil(4.03 * (1 + (1/conf.kappa)) * (1 + (1/conf.kappa)));
 
     //No startiter, we have to figure it out
-    if (conf.startiter == 0) {
-        std::ostream* backup = samples_out;
-        samples_out = NULL;
-        AppMC *counter = new AppMC;
-        counter->solver = solver;
-        AppMCConfig appconf; //should set the default parameters
-        SATCount solCount = counter->solve(appconf);
-        cout << "c [UniGen] finished counting solutions in "
-        << (cpuTimeTotal() - startTime) << " s" << endl;
+    assert(conf.startiter == 0);
+    std::ostream* backup = samples_out;
+    samples_out = NULL;
+    cout << "c [UniGen] finished counting solutions in "
+    << (cpuTimeTotal() - startTime) << " s" << endl;
 
-        if (solCount.hashCount == 0 && solCount.cellSolCount == 0) {
-            cout << "c [UniGen] The input formula is unsatisfiable." << endl;
-            return 0;
-        }
-
-        if (conf.verb) {
-            solver->print_stats();
-        }
-        solCount.print_num_solutions();
-
-        double si = round(solCount.hashCount + log2(solCount.cellSolCount)
-            + log2(1.8) - log2(threshold_UniGengen)) - 2;
-        if (si > 0) {
-            conf.startiter = si;
-        } else {
-            conf.startiter = 0;   /* Indicate ideal sampling case */
-        }
-        samples_out = backup;
-    } else {
-        cout << "c Using manually-specified startiter for sample generation" << endl;
+    if (solCount.hashCount == 0 && solCount.cellSolCount == 0) {
+        cout << "c [UniGen] The input formula is unsatisfiable." << endl;
+        exit(-1);
     }
+
+    double si = round(solCount.hashCount + log2(solCount.cellSolCount)
+        + log2(1.8) - log2(threshold_UniGengen)) - 2;
+    if (si > 0) {
+        conf.startiter = si;
+    } else {
+        conf.startiter = 0;   /* Indicate ideal sampling case */
+    }
+    samples_out = backup;
     generate_samples();
-
-
-    return 0;
 }
 
 vector<Lit> UniGen::set_num_hashes(

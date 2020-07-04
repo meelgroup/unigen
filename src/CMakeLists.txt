@@ -85,8 +85,8 @@ install(TARGETS unigen
     PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/unigen"
 )
 
-unigen_add_public_header(unigen ${CMAKE_CURRENT_SOURCE_DIR}/unigen.h )
-unigen_add_public_header(unigen ${CMAKE_CURRENT_SOURCE_DIR}/unigenconfig.h )
+#unigen_add_public_header(unigen ${CMAKE_CURRENT_SOURCE_DIR}/unigen.h )
+#unigen_add_public_header(unigen ${CMAKE_CURRENT_SOURCE_DIR}/unigenconfig.h )
 
 
 # -----------------------------------------------------------------------------

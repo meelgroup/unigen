@@ -45,9 +45,10 @@ using std::vector;
 using std::map;
 using std::cout;
 using std::endl;
+using ApproxMC::SolCount;
 using namespace CMSat;
 
-/*
+
 struct SavedModel
 {
     SavedModel(uint32_t _hash_num, const vector<lbool>& _model) :
@@ -88,12 +89,20 @@ struct SolNum {
     uint64_t solutions = 0;
     uint64_t repeated = 0;
 };
-*/ 
-//Commented out above but I think we should probably not expose the above structs via ApproxMC
-//
+
+struct SparseData {
+    explicit SparseData(int _table_no) :
+        table_no(_table_no)
+    {}
+
+    uint32_t next_index = 0;
+    double sparseprob = 0.5;
+    int table_no = -1;
+};
+
 class UniGen {
 public:
-    int solve(UniGenConfig _conf);
+    void sample(SATSolver* solver, SolCount sol_count);
 
     uint32_t loThresh;
     uint32_t hiThresh;
@@ -102,7 +111,7 @@ public:
     void printVersionInfo() const;
     void set_samples_file(std::ostream* os);
     std::mutex count_mutex;
-    void print_final_count_stats(SATCount sol_count);
+    void print_final_count_stats(SolCount sol_count);
 
 private:
     UniGenConfig conf;

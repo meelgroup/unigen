@@ -39,26 +39,46 @@ using std::vector;
 #include "unigenconfig.h"
 #include "unigen.h"
 #include "time_mem.h"
-#include "approxmc/approxmc.h"
+#include <approxmc/approxmc.h>
 
-#include <cryptominisat5/cryptominisat.h>
-#include "cryptominisat5/dimacsparser.h"
-#include "cryptominisat5/streambuffer.h"
+#include <cryptominisat5/dimacsparser.h>
+#include <cryptominisat5/streambuffer.h>
 
 using namespace CMSat;
 using std::cout;
 using std::cerr;
 using std::endl;
-string command_line;
+ApproxMC::AppMC* appmc = NULL;
 UniGen* unigen = NULL;
 
-UniGenConfig conf;
-po::options_description UniGen_options = po::options_description("Main options");
-po::options_description UniGengen_options = po::options_description("Sampling options");
-po::options_description UniGen4_options = po::options_description("ApproxMC4 paper options");
+po::options_description main_options = po::options_description("Main options");
+po::options_description improvement_options = po::options_description("Improvement options");
+po::options_description misc_options = po::options_description("Misc options");
+po::options_description sampling_options = po::options_description("Sampling options");
 po::options_description help_options;
 po::variables_map vm;
 po::positional_options_description p;
+
+uint32_t verbosity = 1;
+uint32_t seed;
+double epsilon;
+double delta;
+string logfilename;
+uint32_t verb_cls = 0;
+uint32_t num_threads = 1;
+uint32_t simplify;
+double var_elim_ratio;
+uint32_t detach_xors = 1;
+uint32_t reuse_models = 1;
+uint32_t force_sol_extension = 0;
+uint32_t sparse;
+
+//sampling
+uint32_t samples = 20;
+int only_indep_samples = 1;
+int multisample = false;
+std::string sample_fname;
+double kappa = 0.638;      /* Corresponds to epsilon=16 */
 
 //signal code
 void SIGINT_handler(int)
@@ -69,58 +89,82 @@ void SIGINT_handler(int)
 
 void add_UniGen_options()
 {
+    ApproxMC::AppMC tmp;
+    epsilon = tmp.get_default_epsilon();
+    delta = tmp.get_default_delta();
+    simplify = tmp.get_default_simplify();
+    var_elim_ratio = tmp.get_default_var_elim_ratio();
+    sparse = tmp.get_default_sparse();
+    seed = tmp.get_default_seed();
+
+    //Unigen tmp2;
+    //kappa = tmp2.get_default_kappa();
+
+    std::ostringstream my_epsilon;
+    std::ostringstream my_delta;
+    std::ostringstream my_var_elim_ratio;
     std::ostringstream my_kappa;
 
-    my_kappa << std::setprecision(8) << conf.kappa;
+    my_epsilon << std::setprecision(8) << epsilon;
+    my_delta << std::setprecision(8) << delta;
+    my_var_elim_ratio << std::setprecision(8) << var_elim_ratio;
+    my_kappa << std::setprecision(8) << kappa;
 
-    UniGen_options.add_options()
+    main_options.add_options()
     ("help,h", "Prints help")
-    ("version", "Print version info")
     ("input", po::value< vector<string> >(), "file(s) to read")
-    ("verb,v", po::value(&conf.verb)->default_value(conf.verb), "verbosity")
-    ("seed,s", po::value(&conf.seed)->default_value(conf.seed), "Seed")
-    ("start", po::value(&conf.startiter)->default_value(conf.startiter),
-         "Start at this many XORs")
-    ("log", po::value(&conf.logfilename)->default_value(conf.logfilename),
+    ("verb,v", po::value(&verbosity)->default_value(1), "verbosity")
+    ("seed,s", po::value(&seed)->default_value(seed), "Seed")
+    ("version", "Print version info")
+
+    ("epsilon", po::value(&epsilon)->default_value(epsilon, my_epsilon.str())
+        , "epsilon parameter as per PAC guarantees")
+    ("delta", po::value(&delta)->default_value(delta, my_delta.str())
+        , "delta parameter as per PAC guarantees; 1-delta is the confidence")
+    ("log", po::value(&logfilename),
          "Logs of ApproxMC execution")
-    ("th", po::value(&conf.num_threads)->default_value(conf.num_threads),
-         "How many solving threads to use per solver call")
-    ("vcl", po::value(&conf.verb_UniGen_cls)->default_value(conf.verb_UniGen_cls)
+    ;
+
+    improvement_options.add_options()
+    ("sparse", po::value(&sparse)->default_value(sparse)
+        , "Generate sparse XORs when possible")
+    ("detachxor", po::value(&detach_xors)->default_value(detach_xors)
+        , "Detach XORs in CMS")
+    ("reusemodels", po::value(&reuse_models)->default_value(reuse_models)
+        , "Reuse models while counting solutions")
+    ("forcesolextension", po::value(&force_sol_extension)->default_value(force_sol_extension)
+        , "Use trick of not extending solutions in the SAT solver to full solution")
+    ;
+
+    misc_options.add_options()
+    ("verbcls", po::value(&verb_cls)->default_value(verb_cls)
         ,"Print banning clause + xor clauses. Highly verbose.")
-    ("simplify", po::value(&conf.simplify)->default_value(conf.simplify)
+    ("th", po::value(&num_threads)->default_value(num_threads),
+         "How many solving threads to use per solver call")
+    ("simplify", po::value(&simplify)->default_value(simplify)
         , "Simplify agressiveness")
-    //blasted_TR_ptb_1_linear.cnf.gz.no_w.cnf.gz is sensitive to below.
-    //1.0 will mess it up. 0.3 will work.
-    ("velimratio", po::value(&conf.var_elim_ratio)->default_value(conf.var_elim_ratio)
+    ("velimratio", po::value(&var_elim_ratio)->default_value(var_elim_ratio)
         , "Variable elimination ratio for each simplify run")
     ;
 
-    //Improvements from ApproxMC4 paper
-    UniGen4_options.add_options()
-    ("detachxor", po::value(&conf.cms_detach_xor)->default_value(conf.cms_detach_xor)
-        , "Detach XORs in CMS")
-    ("reusemodels", po::value(&conf.reuse_models)->default_value(conf.reuse_models)
-        , "Reuse models while counting solutions")
-    ("forcesolextension", po::value(&conf.force_sol_extension)->default_value(conf.force_sol_extension)
-        , "Use trick of not extending solutions in the SAT solver to full solution");
-
-    UniGengen_options.add_options()
-    ("samples", po::value(&conf.samples)->default_value(conf.samples)
+    sampling_options.add_options()
+    ("samples", po::value(&samples)->default_value(samples)
         , "Number of random samples to generate")
-    ("indepsamples", po::value(&conf.only_indep_samples)->default_value(conf.only_indep_samples)
+    ("nosolext", po::value(&only_indep_samples)->default_value(only_indep_samples)
         , "Should only output the independent vars from the samples")
-    ("multisample", po::value(&conf.multisample)->default_value(conf.multisample)
+    ("multisample", po::value(&multisample)->default_value(multisample)
         , "Return multiple samples from each call")
-    ("sampleout", po::value(&conf.sampleFilename)
+    ("sampleout", po::value(&sample_fname)
         , "Write samples to this file")
-    ("kappa", po::value(&conf.kappa)->default_value(conf.kappa, my_kappa.str())
+    ("kappa", po::value(&kappa)->default_value(kappa, my_kappa.str())
         , "Uniformity parameter (see TACAS-15 paper)")
 
     ;
 
-    help_options.add(UniGen_options);
-    help_options.add(UniGengen_options);
-    help_options.add(UniGen4_options);
+    help_options.add(main_options);
+    help_options.add(sampling_options);
+    help_options.add(improvement_options);
+    help_options.add(misc_options);
 }
 
 void add_supported_options(int argc, char** argv)
@@ -222,23 +266,40 @@ void add_supported_options(int argc, char** argv)
         ;
         std::exit(-1);
     }
-
-     if (conf.samples == 0 && vm.count("sampleout")){
-        cerr << "ERROR: You did not give the '--samples N' option, but you gave the '--sampleout FNAME' option." << endl;
-        cout << "ERROR: This is confusing. Please give '--samples N' if you give '--sampleout FNAME'" << endl;
-        exit(-1);
-     }
 }
 
-void readInAFile(SATSolver* solver2, const string& filename)
+std::ostream* open_samples_file()
 {
-    solver2->add_sql_tag("filename", filename);
+    std::ostream* os;
+    std::ofstream* sampleFile = NULL;
+    if (sample_fname.length() != 0)
+    {
+        sampleFile = new std::ofstream;
+        sampleFile->open(sample_fname.c_str());
+        if (!(*sampleFile)) {
+            cout
+            << "ERROR: Couldn't open sample file '"
+            << sample_fname
+            << "' for writing!"
+            << endl;
+            std::exit(-1);
+        }
+        os = sampleFile;
+    } else {
+        os = &cout;
+    }
+
+    return os;
+}
+
+void read_in_file(const string& filename)
+{
     #ifndef USE_ZLIB
     FILE * in = fopen(filename.c_str(), "rb");
-    DimacsParser<StreamBuffer<FILE*, FN> > parser(solver, NULL, 2);
+    DimacsParser<StreamBuffer<FILE*, FN>, ApproxMC::AppMC> parser(appmc, NULL, verbosity);
     #else
     gzFile in = gzopen(filename.c_str(), "rb");
-    DimacsParser<StreamBuffer<gzFile, GZ> > parser(unigen->solver, NULL, 2);
+    DimacsParser<StreamBuffer<gzFile, GZ>, ApproxMC::AppMC> parser(appmc, NULL, verbosity);
     #endif
 
     if (in == NULL) {
@@ -254,16 +315,16 @@ void readInAFile(SATSolver* solver2, const string& filename)
         exit(-1);
     }
 
-    conf.sampling_set.swap(parser.sampling_vars);
+    appmc->set_projection_set(parser.sampling_vars);
 
     #ifndef USE_ZLIB
-        fclose(in);
+    fclose(in);
     #else
-        gzclose(in);
+    gzclose(in);
     #endif
 }
 
-void readInStandardInput(SATSolver* solver2)
+void read_stdin()
 {
     cout
     << "c Reading from standard input... Use '-h' or '--help' for help."
@@ -281,70 +342,20 @@ void readInStandardInput(SATSolver* solver2)
     }
 
     #ifndef USE_ZLIB
-    DimacsParser<StreamBuffer<FILE*, FN> > parser(solver2, NULL, 2);
+    DimacsParser<StreamBuffer<FILE*, FN>, ApproxMC::AppMC> parser(appmc, NULL, verbosity);
     #else
-    DimacsParser<StreamBuffer<gzFile, GZ> > parser(solver2, NULL, 2);
+    DimacsParser<StreamBuffer<gzFile, GZ>, ApproxMC::AppMC> parser(appmc, NULL, verbosity);
     #endif
 
     if (!parser.parse_DIMACS(in, false)) {
         exit(-1);
     }
 
-    conf.sampling_set.swap(parser.sampling_vars);
+    appmc->set_projection_set(parser.sampling_vars);
 
     #ifdef USE_ZLIB
-        gzclose(in);
+    gzclose(in);
     #endif
-}
-
-void set_sampling_vars()
-{
-    if (conf.sampling_set.empty()) {
-        cout
-        << "c [UniGen] WARNING! Sampling set was not declared with 'c ind var1 [var2 var3 ..] 0'"
-        " notation in the CNF." << endl
-        << "c [UniGen] we may work substantially worse!" << endl;
-        for (size_t i = 0; i < unigen->solver->nVars(); i++) {
-            conf.sampling_set.push_back(i);
-        }
-    }
-    cout << "c [UniGen] Sampling set size: " << conf.sampling_set.size() << endl;
-    if (conf.sampling_set.size() > 100) {
-        cout
-        << "c [UniGen] Sampling var set contains over 100 variables, not displaying"
-        << endl;
-    } else {
-        cout << "c [UniGen] Sampling set: ";
-        for (auto v: conf.sampling_set) {
-            cout << v+1 << ", ";
-        }
-        cout << endl;
-    }
-    unigen->solver->set_sampling_vars(&conf.sampling_set);
-}
-
-std::ostream* open_samples_file()
-{
-    std::ostream* os;
-    std::ofstream* sampleFile = NULL;
-    if (conf.sampleFilename.length() != 0)
-    {
-        sampleFile = new std::ofstream;
-        sampleFile->open(conf.sampleFilename.c_str());
-        if (!(*sampleFile)) {
-            cout
-            << "ERROR: Couldn't open sample file '"
-            << conf.sampleFilename
-            << "' for writing!"
-            << endl;
-            std::exit(-1);
-        }
-        os = sampleFile;
-    } else {
-        os = &cout;
-    }
-
-    return os;
 }
 
 int main(int argc, char** argv)
@@ -355,11 +366,9 @@ int main(int argc, char** argv)
                    FE_OVERFLOW
                   );
     #endif
-    signal(SIGINT, SIGINT_handler);
-    signal(SIGALRM, SIGINT_handler);
-    signal(SIGTERM, SIGINT_handler);
-    signal(SIGKILL, SIGINT_handler);
+
     //Reconstruct the command line so we can emit it later if needed
+    string command_line;
     for(int i = 0; i < argc; i++) {
         command_line += string(argv[i]);
         if (i+1 < argc) {
@@ -367,80 +376,54 @@ int main(int argc, char** argv)
         }
     }
 
-    UniGen *unigen = new UniGen;
+    appmc = new ApproxMC::AppMC;
     add_supported_options(argc, argv);
-    unigen->printVersionInfo();
-    cout
-    << "c executed with command line: "
-    << command_line
-    << endl;
-
-    cout << "c [UniGen] using seed: " << conf.seed << endl;
-
-    if (vm.count("log") == 0) {
-        if (vm.count("input") != 0) {
-            conf.logfilename = vm["input"].as<vector<string> >()[0] + ".log";
-            cout << "c [UniGen] Logfile name not given, assumed to be " << conf.logfilename << endl;
-        } else {
-            std::cerr << "[UniGen] ERROR: You must provide the logfile name" << endl;
-            exit(-1);
-        }
+    if (verbosity) {
+        cout << appmc->get_version_info();
+        cout << "c executed with command line: " << command_line << endl;
     }
 
-    if (!conf.only_indep_samples) {
-        cout << "ERROR: You requested samples with full solutions but '--cmpindeponly 1' is set. Set it to false: '--indep 0'" << endl;
-        exit(-1);
+    //Main options
+    appmc->set_verbosity(verbosity);
+    if (verbosity) {
+        appmc->set_detach_warning();
+    }
+    appmc->set_seed(seed);
+
+    //Improvement options
+    appmc->set_detach_xors(detach_xors);
+    appmc->set_reuse_models(reuse_models);
+    appmc->set_force_sol_extension(force_sol_extension);
+    appmc->set_sparse(sparse);
+
+    //Misc options
+    appmc->set_verb_cls(verb_cls);
+    appmc->set_num_threads(num_threads);
+    appmc->set_simplify(simplify);
+    appmc->set_var_elim_ratio(var_elim_ratio);
+
+    if (logfilename != "") {
+        appmc->set_up_log(logfilename);
+        cout << "c [appmc] Logfile set " << logfilename << endl;
     }
 
-    //startTime = cpuTimeTotal();
-    unigen->solver = new SATSolver();
-    unigen->solver->set_up_for_scalmc();
-
-    if (conf.verb > 2) {
-        unigen->solver->set_verbosity(conf.verb-2);
-    }
-    unigen->solver->set_allow_otf_gauss();
-    unigen->solver->set_xor_detach(conf.cms_detach_xor);
-
-    if (conf.num_threads > 1) {
-        unigen->solver->set_num_threads(conf.num_threads);
-    }
-
-    
-    if (conf.samples < 0) {
-        cout << "[UniGen] ERROR: The number of samples should be greater than zero" << endl;
-    }
-
-    //parsing the input
     if (vm.count("input") != 0) {
         vector<string> inp = vm["input"].as<vector<string> >();
         if (inp.size() > 1) {
-            cout << "[UniGen] ERROR: can only parse in one file" << endl;
+            cout << "[appmc] ERROR: you must only give one CNF as input" << endl;
+            exit(-1);
         }
-        readInAFile(unigen->solver, inp[0].c_str());
+        read_in_file(inp[0].c_str());
     } else {
-        readInStandardInput(unigen->solver);
-    }
-    set_sampling_vars();
-
-    std::ostream* out = open_samples_file();
-    unigen->set_samples_file(out);
-
-    //Counting
-    if (conf.samples > 0 && conf.startiter == 0) {
-        cout << "c [UniGen] Using UniGen to compute startiter for gen_n_samples" << endl;
+        read_stdin();
     }
 
-    if (conf.startiter > conf.sampling_set.size()) {
-        cout << "c [UniGen] ERROR: Manually-specified start_iter"
-             "is larger than the size of the sampling set.\n" << endl;
-        exit(-1);
-    }
+    auto sol_count = appmc->count();
 
-    auto ret = unigen->solve(conf);
-    if (out != &cout) {
-        delete out;
-    }
+    unigen = new UniGen;
+    //unigen->set_kappa(kappa);
+    //unigen->set_samples(samples);
+    unigen->sample(appmc->get_solver(), sol_count);
 
-    return ret;
+    return 0;
 }

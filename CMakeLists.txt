@@ -462,8 +462,6 @@ endif()
 # -----------------------------------------------------------------------------
 set(UNIGEN_EXPORT_NAME "unigenTargets")
 
-find_package(approxmc CONFIG)
-
 add_subdirectory(src unig-src)
 
 # -----------------------------------------------------------------------------
