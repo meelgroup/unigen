@@ -1,0 +1,20 @@
+# Config file for the @EXPORT_TYPE@ cryptominisat Package
+# It defines the following variables
+#  UNIGEN_INCLUDE_DIRS - include directories for cryptominisat5
+#  UNIGEN_LIBRARIES    - libraries to link against
+#  UNIGEN_EXECUTABLE   - the cryptominisat executable
+
+# Compute paths
+get_filename_component(UNIGEN_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+set(UNIGEN_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
+
+# Our library dependencies (contains definitions for IMPORTED targets)
+include("${UNIGEN_CMAKE_DIR}/@UNIGEN_TARGETS_FILENAME@")
+
+# These are IMPORTED targets created by @SCALMC_TARGETS_FILENAME@
+set(UNIGEN_LIBRARIES unigen)
+set(UNIGEN_STATIC_LIBRARIES unigen)
+set(UNIGEN_STATIC_LIBRARIES_DEPS UNIGEN_STATIC_DEPS@)
+set(UNIGEN_VERSION_MAJOR @PROJECT_VERSION_MAJOR@)
+set(UNIGEN_VERSION_MINOR @PROJECT_VERSION_MINOR@)
+set(UNIGEN_EXECUTABLE unigen)
