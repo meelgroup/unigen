@@ -544,8 +544,7 @@ bool Sampler::gen_rhs()
 
 string Sampler::gen_rnd_bits(
     const uint32_t size,
-    // The name of parameter was changed to indicate that this is the index of hash function
-    const uint32_t hash_index)
+    const uint32_t /*hash_index*/)
 {
     string randomBits;
     std::uniform_int_distribution<uint32_t> dist{0, 1000};
