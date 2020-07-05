@@ -433,6 +433,8 @@ int main(int argc, char** argv)
     } else {
         unigen->sample(&sol_count, num_samples);
     }
+    delete unigen;
+    delete appmc;
 
     return 0;
 }
