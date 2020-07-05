@@ -43,7 +43,7 @@ namespace ApproxMC {
 
 namespace UniGen {
 
-typedef void (*callback)(const std::string& str, void* data);
+typedef void (*callback)(const std::vector<int>& solution, void* data);
 
 struct UniGenPrivateData;
 #ifdef _WIN32

@@ -145,7 +145,7 @@ SolNum Sampler::bounded_sol_count(
         const uint32_t hashCount,
         uint32_t minSolutions,
         HashesModels* hm,
-        vector<string>* out_solutions
+        vector<vector<int>>* out_solutions
 ) {
     cout << "c [unig] "
     "[ " << std::setw(7) << std::setprecision(2) << std::fixed
@@ -234,7 +234,7 @@ SolNum Sampler::bounded_sol_count(
         //#endif
         models.push_back(model);
         if (out_solutions) {
-            out_solutions->push_back(get_solution_str(model));
+            out_solutions->push_back(get_solution_ints(model));
         }
 
         //ban solution
@@ -262,7 +262,7 @@ SolNum Sampler::bounded_sol_count(
 
             for (uint32_t i = 0; i < sols_to_return(solutions); i++) {
                 const auto& model = models.at(modelIndices.at(i));
-                (*callback_func)(get_solution_str(model), callback_func_data);
+                (*callback_func)(get_solution_ints(model), callback_func_data);
             }
         }
     }
@@ -397,7 +397,7 @@ void Sampler::generate_samples(const uint32_t num_samples_needed)
         }
     } else {
         /* Ideal sampling case; enumerate all solutions */
-        vector<string> out_solutions;
+        vector<vector<int> > out_solutions;
         const uint32_t count = bounded_sol_count(
             std::numeric_limits<uint32_t>::max() //max no. solutions
             , NULL //assumps is empty
@@ -410,15 +410,13 @@ void Sampler::generate_samples(const uint32_t num_samples_needed)
 
         std::uniform_int_distribution<unsigned> uid {0, count-1};
         for (uint32_t i = 0; i < num_samples_needed; ++i) {
-            vector<string>::iterator it = out_solutions.begin();
+            auto it = out_solutions.begin();
             for (uint32_t j = uid(randomEngine); j > 0; --j)    // TODO improve hack
             {
                 ++it;
             }
             samples++;
-            std::stringstream ss;
-            ss << *it;
-            (*callback_func)(ss.str(), callback_func_data);
+            (*callback_func)(*it, callback_func_data);
         }
     }
 
@@ -509,25 +507,22 @@ uint32_t Sampler::gen_n_samples(
 //Helper functions
 ////////////////////
 
-std::string Sampler::get_solution_str(const vector<lbool>& model)
+vector<int> Sampler::get_solution_ints(const vector<lbool>& model)
 {
-    assert(callback_func != NULL);
-
-    std::stringstream  solution;
+    vector<int> solution;
     if (conf.only_indep_samples) {
         for (uint32_t j = 0; j < appmc->get_sampling_set().size(); j++) {
             uint32_t var = appmc->get_sampling_set()[j];
             assert(model[var] != l_Undef);
-            solution << ((model[var] != l_True) ? "-":"") << var + 1 << " ";
+            solution.push_back(((model[var] != l_True) ? -1: 1) * ((int)var + 1));
         }
     } else {
         for(uint32_t var = 0; var < orig_num_vars; var++) {
             assert(model[var] != l_Undef);
-            solution << ((model[var] != l_True) ? "-":"") << var + 1 << " ";
+            solution.push_back(((model[var] != l_True) ? -1: 1) * ((int)var + 1));
         }
     }
-    solution << "0";
-    return solution.str();
+    return solution;
 }
 
 bool Sampler::gen_rhs()

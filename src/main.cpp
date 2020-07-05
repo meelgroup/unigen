@@ -341,10 +341,13 @@ void read_stdin()
     #endif
 }
 
-void mycallback(const std::string& s, void *file)
+void mycallback(const std::vector<int>& solution, void *file)
 {
     std::ostream* os = (std::ostream*)file;
-    (*os) << s << endl;
+    for(uint32_t i = 0; i < solution.size(); i++) {
+        (*os) << solution[i] <<  " ";
+    }
+    (*os) << "0" << endl;
 }
 
 int main(int argc, char** argv)

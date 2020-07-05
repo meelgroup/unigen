@@ -140,7 +140,7 @@ private:
         const uint32_t hashCount,
         uint32_t minSolutions = 1,
         HashesModels* hm = NULL,
-        vector<string>* out_solutions = NULL
+        vector<vector<int>>* out_solutions = NULL
     );
     vector<Lit> set_num_hashes(
         uint32_t num_wanted,
@@ -152,7 +152,7 @@ private:
     //Helper functions
     ////////////////
     void print_xor(const vector<uint32_t>& vars, const uint32_t rhs);
-    std::string get_solution_str(const vector<lbool>& model);
+    vector<int> get_solution_ints(const vector<lbool>& model);
     void write_log(
         bool sampling,
         int iter,
