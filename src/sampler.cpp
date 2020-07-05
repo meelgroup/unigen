@@ -147,7 +147,7 @@ SolNum Sampler::bounded_sol_count(
         HashesModels* hm,
         vector<string>* out_solutions
 ) {
-    cout << "c [Sampler] "
+    cout << "c [unig] "
     "[ " << std::setw(7) << std::setprecision(2) << std::fixed
     << (cpuTimeTotal()-startTime)
     << " ]"
@@ -179,14 +179,14 @@ SolNum Sampler::bounded_sol_count(
 
     if (appmc->get_simplify() >= 2) {
         if (conf.verb >= 2) {
-            cout << "c [Sampler] inter-simplifying" << endl;
+            cout << "c [unig] inter-simplifying" << endl;
         }
         double myTime = cpuTime();
         solver->simplify(&new_assumps);
         solver->set_verbosity(0);
         total_inter_simp_time += cpuTime() - myTime;
         if (conf.verb >= 1) {
-            cout << "c [Sampler] inter-simp finished, total simp time: "
+            cout << "c [unig] inter-simp finished, total simp time: "
             << total_inter_simp_time << endl;
         }
 
@@ -202,7 +202,7 @@ SolNum Sampler::bounded_sol_count(
         assert(ret == l_False || ret == l_True);
 
         if (conf.verb >= 2) {
-            cout << "c [Sampler] bounded_sol_count ret: " << std::setw(7) << ret;
+            cout << "c [unig] bounded_sol_count ret: " << std::setw(7) << ret;
             if (ret == l_True) {
                 cout << " sol no.  " << std::setw(3) << solutions;
             } else {
@@ -245,7 +245,7 @@ SolNum Sampler::bounded_sol_count(
             lits.push_back(Lit(var, solver->get_model()[var] == l_True));
         }
         if (conf.verb_Sampler_cls) {
-            cout << "c [Sampler] Adding banning clause: " << lits << endl;
+            cout << "c [unig] Adding banning clause: " << lits << endl;
         }
         solver->add_clause(lits);
     }
@@ -307,11 +307,9 @@ void Sampler::sample(
     assert(conf.startiter == 0);
     std::ostream* backup = samples_out;
     samples_out = NULL;
-    cout << "c [Sampler] finished counting solutions in "
-    << (cpuTimeTotal() - startTime) << " s" << endl;
 
     if (solCount.hashCount == 0 && solCount.cellSolCount == 0) {
-        cout << "c [Sampler] The input formula is unsatisfiable." << endl;
+        cout << "c [unig] The input formula is unsatisfiable." << endl;
         exit(-1);
     }
 
@@ -348,7 +346,7 @@ vector<Lit> Sampler::set_num_hashes(
 void Sampler::simplify()
 {
     if (conf.verb >= 1) {
-        cout << "c [Sampler] simplifying" << endl;
+        cout << "c [unig] simplifying" << endl;
     }
 
     solver->set_sls(1);
@@ -380,16 +378,16 @@ void Sampler::generate_samples(const uint32_t num_samples_needed)
     const uint32_t samplesPerCall = sols_to_return(num_samples_needed);
     const uint32_t callsNeeded =
         num_samples_needed / samplesPerCall + (bool)(num_samples_needed % samplesPerCall);
-    cout << "Samples requested: " << num_samples_needed << endl;
-    cout << "samples per XOR set:" << samplesPerCall << endl;
-    cout << "-> calls needed: " << callsNeeded << endl;
+    cout << "c [unig] Samples requested: " << num_samples_needed << endl;
+    cout << "c [unig] samples per XOR set:" << samplesPerCall << endl;
+    cout << "c [unig] -> calls needed: " << callsNeeded << endl;
 
     //TODO WARNING what is this 14???????????????????
     uint32_t callsPerLoop = std::min(solver->nVars() / 14, callsNeeded);
     callsPerLoop = std::max(callsPerLoop, 1U);
-    cout << "callsPerLoop:" << callsPerLoop << endl;
+    cout << "c [unig] callsPerLoop:" << callsPerLoop << endl;
 
-    cout << "c [Sampler] starting sample generation."
+    cout << "c [unig] starting sample generation."
     << " loThresh: " << loThresh
     << ", hiThresh: " << hiThresh
     << ", startiter: " << conf.startiter << endl;
@@ -429,12 +427,13 @@ void Sampler::generate_samples(const uint32_t num_samples_needed)
     }
 
     cout
-    << "[Sampler]"
-    << " Time to sample: " << cpuTimeTotal() - genStartTime << " s"
+    << "c [unig] Time to sample: "
+    << cpuTimeTotal() - genStartTime
+    << " s"
     << " -- Time count+samples: " << cpuTimeTotal() << " s"
     << endl;
 
-    cout << "c [Sampler] Samples generated: " << samples << endl;
+    cout << "c [unig] Samples generated: " << samples << endl;
 }
 
 uint32_t Sampler::gen_n_samples(
@@ -564,7 +563,7 @@ string Sampler::gen_rnd_bits(
 
 void Sampler::print_xor(const vector<uint32_t>& vars, const uint32_t rhs)
 {
-    cout << "c [Sampler] Added XOR ";
+    cout << "c [unig] Added XOR ";
     for (size_t i = 0; i < vars.size(); i++) {
         cout << vars[i]+1;
         if (i < vars.size()-1) {
@@ -606,7 +605,7 @@ uint32_t Sampler::sols_to_return(uint32_t numSolutions)
 
 void Sampler::openLogFile()
 {
-    if (!conf.logfile) {
+    if (conf.logfile) {
         *conf.logfile << std::left
         << std::setw(5) << "sampl"
         << " " << std::setw(4) << "iter"
@@ -631,7 +630,7 @@ void Sampler::write_log(
     double used_time
 )
 {
-    if (!conf.logfile) {
+    if (conf.logfile) {
         *conf.logfile
         << std::left
         << std::setw(5) << (int)sampling

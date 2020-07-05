@@ -149,7 +149,7 @@ void add_UniGen_options()
          "How many solving threads to use per solver call")
     ("simplify", po::value(&simplify)->default_value(simplify)
         , "Simplify agressiveness")
-    ("velimratio", po::value(&var_elim_ratio)->default_value(var_elim_ratio)
+    ("velimratio", po::value(&var_elim_ratio)->default_value(var_elim_ratio, my_var_elim_ratio.str())
         , "Variable elimination ratio for each simplify run")
     ;
 
@@ -273,30 +273,6 @@ void add_supported_options(int argc, char** argv)
         ;
         std::exit(-1);
     }
-}
-
-std::ostream* open_samples_file()
-{
-    std::ostream* os;
-    std::ofstream* sampleFile = NULL;
-    if (sample_fname.length() != 0)
-    {
-        sampleFile = new std::ofstream;
-        sampleFile->open(sample_fname.c_str());
-        if (!(*sampleFile)) {
-            cout
-            << "ERROR: Couldn't open sample file '"
-            << sample_fname
-            << "' for writing!"
-            << endl;
-            std::exit(-1);
-        }
-        os = sampleFile;
-    } else {
-        os = &cout;
-    }
-
-    return os;
 }
 
 void read_in_file(const string& filename)
@@ -445,8 +421,18 @@ int main(int argc, char** argv)
         unigen->set_logfile(&logfile);
     }
 
-
-    unigen->sample(&sol_count, num_samples);
+    if (vm.count("sampleout") != 0) {
+        std::ofstream sample_out;
+        sample_out.open(sample_fname.c_str());
+        if (!sample_out.is_open()) {
+            cout << "[Sampler] Cannot open samples file '" << sample_fname
+                 << "' for writing." << endl;
+            exit(1);
+        }
+        unigen->sample(&sol_count, num_samples, &sample_out);
+    } else {
+        unigen->sample(&sol_count, num_samples);
+    }
 
     return 0;
 }

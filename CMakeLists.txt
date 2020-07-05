@@ -462,7 +462,7 @@ endif()
 # -----------------------------------------------------------------------------
 set(UNIGEN_EXPORT_NAME "unigenTargets")
 
-add_subdirectory(src unig-src)
+add_subdirectory(src src-unigen)
 
 # -----------------------------------------------------------------------------
 # Add uninstall target for makefiles
