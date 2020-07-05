@@ -1,5 +1,5 @@
 /*
-UniGen
+Sampler
 
  Copyright (c) 2019-2020, Mate Soos and Kuldeep S. Meel. All rights reserved
  Copyright (c) 2009-2018, Mate Soos. All rights reserved.
@@ -27,10 +27,10 @@ UniGen
  */
 
 
-#ifndef UniGen_H_
-#define UniGen_H_
+#ifndef Sampler_H_
+#define Sampler_H_
 
-#include "unigenconfig.h"
+#include "config.h"
 #include <gmp.h>
 #include <fstream>
 #include <random>
@@ -47,6 +47,7 @@ using std::cout;
 using std::endl;
 using ApproxMC::SolCount;
 using namespace CMSat;
+using namespace ApproxMC;
 
 
 struct SavedModel
@@ -100,25 +101,26 @@ struct SparseData {
     int table_no = -1;
 };
 
-class UniGen {
+class Sampler {
 public:
-    void sample(SATSolver* solver, SolCount sol_count);
+    void sample(SolCount sol_count);
+    AppMC* appmc;
 
     uint32_t loThresh;
     uint32_t hiThresh;
-    uint32_t threshold_UniGengen;
+    uint32_t threshold_Samplergen;
     SATSolver* solver = NULL;
     void printVersionInfo() const;
     void set_samples_file(std::ostream* os);
     std::mutex count_mutex;
-    void print_final_count_stats(SolCount sol_count);
+    string get_version_info() const;
 
 private:
-    UniGenConfig conf;
+    Config conf;
     string gen_rnd_bits(const uint32_t size,
                         const uint32_t numhashes);
     uint32_t sols_to_return(uint32_t numSolutions);
-    void add_UniGen_options();
+    void add_Sampler_options();
     bool gen_rhs();
     uint32_t gen_n_samples(
         const uint32_t samples
@@ -195,10 +197,10 @@ private:
     char** argv;
 };
 
-inline void UniGen::set_samples_file(std::ostream* out)
+inline void Sampler::set_samples_file(std::ostream* out)
 {
     samples_out = out;
 }
 
 
-#endif //UniGen_H_
+#endif //Sampler_H_

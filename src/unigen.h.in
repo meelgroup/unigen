@@ -1,10 +1,11 @@
 /*
- ApproxMC and gen_n_samples
+ UniGen
 
+ Copyright (c) 2019-2020, Mate Soos and Kuldeep S. Meel. All rights reserved
  Copyright (c) 2009-2018, Mate Soos. All rights reserved.
- Copyright (c) 2014, Supratik Chakraborty, Kuldeep S. Meel, Moshe Y. Vardi
  Copyright (c) 2015, Supratik Chakraborty, Daniel J. Fremont,
  Kuldeep S. Meel, Sanjit A. Seshia, Moshe Y. Vardi
+ Copyright (c) 2014, Supratik Chakraborty, Kuldeep S. Meel, Moshe Y. Vardi
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -25,29 +26,54 @@
  THE SOFTWARE.
  */
 
-#ifndef UNIGENCONFIG
-#define UNIGENCONFIG
 
+#ifndef UNIGEN_H__
+#define UNIGEN_H__
+
+#include <cstdint>
+#include <string>
 #include <vector>
+#include <cryptominisat5/cryptominisat.h>
+#include <cryptominisat5/solvertypesmini.h>
 
-struct UniGenConfig {
-    uint32_t startiter = 0;
-    uint32_t num_threads = 1;
-    unsigned verb = 1;
-    unsigned verb_UniGen_cls = 0;
-    uint32_t seed = 1;
-    bool only_indep_samples = true;
-    uint32_t multisample = 1;
-    uint32_t samples = 0;
-    int simplify = 1;
-    double var_elim_ratio = 1.6;
-    int reuse_models = 1;
-    int force_sol_extension = 0;
-    std::vector<uint32_t> sampling_set;
-    double kappa = 0.638;      /* Corresponds to epsilon=16 */
-    std::string sampleFilename;
-    std::string logfilename = "";
-    int cms_detach_xor = 1;
+namespace ApproxMC {
+    class AppMC;
+    class SolCount;
+}
+
+namespace UniGen {
+
+struct UniGenPrivateData;
+#ifdef _WIN32
+class __declspec(dllexport) UniG
+#else
+class UniG
+#endif
+{
+public:
+    UniG(ApproxMC::AppMC* appmc);
+    ~UniG();
+    std::string get_version_info();
+    void sample(const ApproxMC::SolCount* sol_count);
+
+    //Main options
+    void set_up_log(std::string log_file_name);
+    void set_verbosity(uint32_t verb);
+
+    //Misc options -- do NOT to change unless you know what you are doing!
+    void set_sparse(uint32_t sparse);
+    void set_simplify(uint32_t simplify);
+
+    //Querying default values
+    double get_default_kappa();
+
+private:
+    ////////////////////////////
+    // Do not bother with this, it's private
+    ////////////////////////////
+    UniGenPrivateData* data;
 };
 
-#endif //UniGenCONFIG
+}
+
+#endif

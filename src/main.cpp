@@ -34,10 +34,9 @@ using std::vector;
 #if defined(__GNUC__) && defined(__linux__)
 #include <fenv.h>
 #endif
-#include <signal.h>
 
-#include "unigenconfig.h"
-#include "unigen.h"
+#include "config.h"
+#include "unigen/unigen.h"
 #include "time_mem.h"
 #include <approxmc/approxmc.h>
 
@@ -45,11 +44,12 @@ using std::vector;
 #include <cryptominisat5/streambuffer.h>
 
 using namespace CMSat;
+using namespace UniGen;
 using std::cout;
 using std::cerr;
 using std::endl;
 ApproxMC::AppMC* appmc = NULL;
-UniGen* unigen = NULL;
+UniG* unigen = NULL;
 
 po::options_description main_options = po::options_description("Main options");
 po::options_description improvement_options = po::options_description("Improvement options");
@@ -90,15 +90,15 @@ void SIGINT_handler(int)
 void add_UniGen_options()
 {
     ApproxMC::AppMC tmp;
-    epsilon = tmp.get_default_epsilon();
-    delta = tmp.get_default_delta();
-    simplify = tmp.get_default_simplify();
-    var_elim_ratio = tmp.get_default_var_elim_ratio();
-    sparse = tmp.get_default_sparse();
-    seed = tmp.get_default_seed();
+    epsilon = tmp.get_epsilon();
+    delta = tmp.get_delta();
+    simplify = tmp.get_simplify();
+    var_elim_ratio = tmp.get_var_elim_ratio();
+    sparse = tmp.get_sparse();
+    seed = tmp.get_seed();
 
     //Unigen tmp2;
-    //kappa = tmp2.get_default_kappa();
+    //kappa = tmp2.get_kappa();
 
     std::ostringstream my_epsilon;
     std::ostringstream my_delta;
@@ -187,7 +187,7 @@ void add_supported_options(int argc, char** argv)
         }
 
         if (vm.count("version")) {
-            unigen->printVersionInfo();
+            cout << unigen->get_version_info();
             std::exit(0);
         }
 
@@ -420,10 +420,10 @@ int main(int argc, char** argv)
 
     auto sol_count = appmc->count();
 
-    unigen = new UniGen;
+    unigen = new UniG(appmc);
     //unigen->set_kappa(kappa);
     //unigen->set_samples(samples);
-    unigen->sample(appmc->get_solver(), sol_count);
+    unigen->sample(&sol_count);
 
     return 0;
 }
