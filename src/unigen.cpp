@@ -65,12 +65,19 @@ DLL_PUBLIC UniG::~UniG()
     delete data;
 }
 
+DLL_PUBLIC void UniG::set_callback(
+    UniGen::callback _callback_func,
+    void* _callback_func_data)
+{
+    data->sampler.callback_func = _callback_func;
+    data->sampler.callback_func_data = _callback_func_data;
+}
+
 DLL_PUBLIC void UniG::sample(
     const SolCount* sol_count,
-    uint32_t num_samples,
-    std::ostream* samples_file)
+    uint32_t num_samples)
 {
-    data->sampler.sample(*sol_count, num_samples, samples_file);
+    data->sampler.sample(*sol_count, num_samples);
 }
 
 DLL_PUBLIC string UniG::get_version_info()

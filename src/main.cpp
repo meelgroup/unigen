@@ -341,6 +341,12 @@ void read_stdin()
     #endif
 }
 
+void mycallback(const std::string& s, void *file)
+{
+    std::ostream* os = (std::ostream*)file;
+    (*os) << s << endl;
+}
+
 int main(int argc, char** argv)
 {
     #if defined(__GNUC__) && defined(__linux__)
@@ -421,18 +427,21 @@ int main(int argc, char** argv)
         unigen->set_logfile(&logfile);
     }
 
+    void *myfile = &std::cout;
+    std::ofstream sample_out;
     if (vm.count("sampleout") != 0) {
-        std::ofstream sample_out;
         sample_out.open(sample_fname.c_str());
         if (!sample_out.is_open()) {
             cout << "[Sampler] Cannot open samples file '" << sample_fname
                  << "' for writing." << endl;
             exit(1);
         }
-        unigen->sample(&sol_count, num_samples, &sample_out);
-    } else {
-        unigen->sample(&sol_count, num_samples);
+        myfile = &sample_out;
     }
+
+    unigen->set_callback(mycallback, myfile);
+    unigen->sample(&sol_count, num_samples);
+
     delete unigen;
     delete appmc;
 

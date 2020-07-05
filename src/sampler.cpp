@@ -252,7 +252,7 @@ SolNum Sampler::bounded_sol_count(
 
     if (solutions < maxSolutions) {
         //Sampling -- output a random sample of N solutions
-        if (solutions >= minSolutions && samples_out != NULL) {
+        if (solutions >= minSolutions) {
             assert(minSolutions > 0);
             vector<size_t> modelIndices;
             for (uint32_t i = 0; i < models.size(); i++) {
@@ -262,7 +262,7 @@ SolNum Sampler::bounded_sol_count(
 
             for (uint32_t i = 0; i < sols_to_return(solutions); i++) {
                 const auto& model = models.at(modelIndices.at(i));
-                (*samples_out) << get_solution_str(model) << endl << std::flush;
+                (*callback_func)(get_solution_str(model), callback_func_data);
             }
         }
     }
@@ -284,11 +284,9 @@ SolNum Sampler::bounded_sol_count(
 
 void Sampler::sample(
     const ApproxMC::SolCount solCount,
-    const uint32_t num_samples,
-    std::ostream* _samples_out)
+    const uint32_t num_samples)
 {
     solver = appmc->get_solver();
-    samples_out = _samples_out;
     orig_num_vars = solver->nVars();
     startTime = cpuTimeTotal();
 
@@ -305,8 +303,6 @@ void Sampler::sample(
 
     //No startiter, we have to figure it out
     assert(conf.startiter == 0);
-    std::ostream* backup = samples_out;
-    samples_out = NULL;
 
     if (solCount.hashCount == 0 && solCount.cellSolCount == 0) {
         cout << "c [unig] The input formula is unsatisfiable." << endl;
@@ -320,7 +316,6 @@ void Sampler::sample(
     } else {
         conf.startiter = 0;   /* Indicate ideal sampling case */
     }
-    samples_out = backup;
     generate_samples(num_samples);
 }
 
@@ -370,7 +365,6 @@ void Sampler::simplify()
 
 void Sampler::generate_samples(const uint32_t num_samples_needed)
 {
-    assert(samples_out != NULL);
     double genStartTime = cpuTimeTotal();
 
     hiThresh = ceil(1 + (1.4142136 * (1 + conf.kappa) * threshold_Samplergen));
@@ -422,7 +416,9 @@ void Sampler::generate_samples(const uint32_t num_samples_needed)
                 ++it;
             }
             samples++;
-            (*samples_out) << *it << endl << std::flush;
+            std::stringstream ss;
+            ss << *it;
+            (*callback_func)(ss.str(), callback_func_data);
         }
     }
 
@@ -515,7 +511,7 @@ uint32_t Sampler::gen_n_samples(
 
 std::string Sampler::get_solution_str(const vector<lbool>& model)
 {
-    assert(samples_out != NULL);
+    assert(callback_func != NULL);
 
     std::stringstream  solution;
     if (conf.only_indep_samples) {
@@ -583,12 +579,6 @@ void printVersionInfoSampler()
     #else
     cout << "c Sampler compiled with non-gcc compiler" << endl;
     #endif
-}
-
-void Sampler::printVersionInfo() const
-{
-    ::printVersionInfoSampler();
-    cout << solver->get_text_version_info();
 }
 
 /* Number of solutions to return from one invocation of gen_n_samples. */

@@ -39,6 +39,7 @@ Sampler
 #include <mutex>
 #include <cryptominisat5/cryptominisat.h>
 #include <approxmc/approxmc.h>
+#include "unigen/unigen.h"
 
 using std::string;
 using std::vector;
@@ -105,20 +106,20 @@ class Sampler {
 public:
     void sample(
         const SolCount sol_count,
-        const uint32_t num_samples,
-        std::ostream* out_samples);
+        const uint32_t num_samples);
     AppMC* appmc;
+    SATSolver* solver = NULL;
+    string get_version_info() const;
 
+    ///What to call on samples
+    UniGen::callback callback_func = NULL;
+    void* callback_func_data = NULL;
+
+private:
     uint32_t loThresh;
     uint32_t hiThresh;
     uint32_t threshold_Samplergen;
-    SATSolver* solver = NULL;
-    void printVersionInfo() const;
-    void set_samples_file(std::ostream* os);
-    std::mutex count_mutex;
-    string get_version_info() const;
 
-private:
     Config conf;
     string gen_rnd_bits(const uint32_t size,
                         const uint32_t numhashes);
@@ -190,14 +191,10 @@ private:
     // internal data
     ////////////////
     double startTime;
-    std::ostream* samples_out = NULL;
     std::mt19937 randomEngine;
     uint32_t orig_num_vars;
     double total_inter_simp_time = 0;
     uint32_t threshold; //precision, it's computed
-
-    int argc;
-    char** argv;
 };
 
 
