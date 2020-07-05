@@ -60,10 +60,6 @@ public:
         uint32_t num_samples,
         std::ostream* samples_file = &std::cout);
 
-    //Main options
-    void set_up_log(std::string log_file_name);
-    void set_verbosity(uint32_t verb);
-
     //Misc options -- do NOT to change unless you know what you are doing!
     void set_kappa(double kappa);
     void set_multisample(bool multisample);
