@@ -39,6 +39,7 @@ using std::vector;
 #include "unigen/unigen.h"
 #include "time_mem.h"
 #include <approxmc/approxmc.h>
+#include <fstream>
 
 #include <cryptominisat5/dimacsparser.h>
 #include <cryptominisat5/streambuffer.h>
@@ -74,11 +75,12 @@ uint32_t force_sol_extension = 0;
 uint32_t sparse;
 
 //sampling
-uint32_t samples = 20;
-int only_indep_samples = 1;
-int multisample = false;
+uint32_t num_samples = 20;
+int only_indep_samples ;
+int multisample;
 std::string sample_fname;
-double kappa = 0.638;      /* Corresponds to epsilon=16 */
+double kappa;      /* Corresponds to epsilon=16 */
+bool verb_sampler_cls ;
 
 //signal code
 void SIGINT_handler(int)
@@ -97,8 +99,12 @@ void add_UniGen_options()
     sparse = tmp.get_sparse();
     seed = tmp.get_seed();
 
-    //Unigen tmp2;
-    //kappa = tmp2.get_kappa();
+    UniG tmp2(NULL);
+    kappa = tmp2.get_kappa();
+    multisample = tmp2.get_multisample();
+    only_indep_samples = tmp2.get_only_indep_samples();
+    force_sol_extension = tmp2.get_force_sol_extension();
+    verb_sampler_cls = tmp2. get_verb_sampler_cls();
 
     std::ostringstream my_epsilon;
     std::ostringstream my_delta;
@@ -148,7 +154,7 @@ void add_UniGen_options()
     ;
 
     sampling_options.add_options()
-    ("samples", po::value(&samples)->default_value(samples)
+    ("samples", po::value(&num_samples)->default_value(num_samples)
         , "Number of random samples to generate")
     ("nosolext", po::value(&only_indep_samples)->default_value(only_indep_samples)
         , "Should only output the independent vars from the samples")
@@ -158,7 +164,8 @@ void add_UniGen_options()
         , "Write samples to this file")
     ("kappa", po::value(&kappa)->default_value(kappa, my_kappa.str())
         , "Uniformity parameter (see TACAS-15 paper)")
-
+    ("verbsamplercls", po::value(&verb_sampler_cls)->default_value(verb_sampler_cls)
+        , "Print XOR constraints added for sampling")
     ;
 
     help_options.add(main_options);
@@ -421,9 +428,25 @@ int main(int argc, char** argv)
     auto sol_count = appmc->count();
 
     unigen = new UniG(appmc);
-    //unigen->set_kappa(kappa);
-    //unigen->set_samples(samples);
-    unigen->sample(&sol_count);
+    unigen->set_kappa(kappa);
+    unigen->set_multisample(multisample);
+    unigen->set_verb_sampler_cls(verb_sampler_cls);
+    unigen->set_only_indep_samples(only_indep_samples);
+    unigen->set_force_sol_extension(force_sol_extension);
+
+    std::ofstream logfile;
+    if (logfilename != "") {
+        logfile.open(logfilename.c_str());
+        if (!logfile.is_open()) {
+            cout << "[Sampler] Cannot open Sampler log file '" << logfilename
+                 << "' for writing." << endl;
+            exit(1);
+        }
+        unigen->set_logfile(&logfile);
+    }
+
+
+    unigen->sample(&sol_count, num_samples);
 
     return 0;
 }

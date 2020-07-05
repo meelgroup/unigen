@@ -103,7 +103,10 @@ struct SparseData {
 
 class Sampler {
 public:
-    void sample(SolCount sol_count);
+    void sample(
+        const SolCount sol_count,
+        const uint32_t num_samples,
+        std::ostream* out_samples);
     AppMC* appmc;
 
     uint32_t loThresh;
@@ -125,10 +128,11 @@ private:
     uint32_t gen_n_samples(
         const uint32_t samples
         , uint32_t* lastSuccessfulHashOffset
+        , const uint32_t num_samples_needed
     );
     Hash add_hash(uint32_t total_num_hashes);
     string binary(const uint32_t x, const uint32_t length);
-    void generate_samples();
+    void generate_samples(const uint32_t num_samples);
     SolNum bounded_sol_count(
         uint32_t maxSolutions,
         const vector<Lit>* assumps,
@@ -187,7 +191,6 @@ private:
     ////////////////
     double startTime;
     std::ostream* samples_out = NULL;
-    std::ofstream logfile;
     std::mt19937 randomEngine;
     uint32_t orig_num_vars;
     double total_inter_simp_time = 0;
@@ -196,11 +199,6 @@ private:
     int argc;
     char** argv;
 };
-
-inline void Sampler::set_samples_file(std::ostream* out)
-{
-    samples_out = out;
-}
 
 
 #endif //Sampler_H_

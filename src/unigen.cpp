@@ -31,6 +31,7 @@
 #include <approxmc/approxmc.h>
 #include "config.h"
 #include <iostream>
+#include <fstream>
 using namespace ApproxMC;
 
 using std::cout;
@@ -64,12 +65,70 @@ DLL_PUBLIC UniG::~UniG()
     delete data;
 }
 
-DLL_PUBLIC void UniG::sample(const SolCount* sol_count)
+DLL_PUBLIC void UniG::sample(
+    const SolCount* sol_count,
+    uint32_t num_samples,
+    std::ostream* samples_file)
 {
-    data->sampler.sample(*sol_count);
+    data->sampler.sample(*sol_count, num_samples, samples_file);
 }
 
 DLL_PUBLIC string UniG::get_version_info()
 {
     return data->sampler.get_version_info();
+}
+
+DLL_PUBLIC double UniG::get_kappa()
+{
+    return data->conf.kappa;
+}
+
+DLL_PUBLIC bool UniG::get_multisample()
+{
+    return data->conf.multisample;
+}
+
+DLL_PUBLIC bool UniG::get_only_indep_samples()
+{
+    return data->conf.only_indep_samples;
+}
+
+DLL_PUBLIC bool UniG::get_verb_sampler_cls()
+{
+    return data->conf.verb_Sampler_cls;
+}
+
+DLL_PUBLIC void UniG::set_kappa(double kappa)
+{
+    data->conf.kappa = kappa;
+}
+
+DLL_PUBLIC void UniG::set_multisample(bool multisample)
+{
+    data->conf.multisample = multisample;
+}
+
+DLL_PUBLIC void UniG::set_only_indep_samples(bool only_indep_samples)
+{
+    data->conf.only_indep_samples = only_indep_samples;
+}
+
+DLL_PUBLIC void UniG::set_verb_sampler_cls(bool verb_sampler_cls)
+{
+    data->conf.verb_Sampler_cls = verb_sampler_cls;
+}
+
+DLL_PUBLIC bool UniG::get_force_sol_extension()
+{
+    return data->conf.force_sol_extension;
+}
+
+DLL_PUBLIC void UniG::set_force_sol_extension(bool force_sol_extension)
+{
+    data->conf.force_sol_extension = force_sol_extension;
+}
+
+DLL_PUBLIC void UniG::set_logfile(std::ostream* logfile)
+{
+    data->conf.logfile = logfile;
 }

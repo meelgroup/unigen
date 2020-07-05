@@ -76,9 +76,9 @@ Hash Sampler::add_hash(uint32_t hash_index)
 
     vars.push_back(act_var);
     solver->add_xor_clause(vars, rhs);
-//     if (conf.verb_Sampler_cls) {
-//         print_xor(vars, rhs);
-//     }
+    if (conf.verb_Sampler_cls) {
+        print_xor(vars, rhs);
+    }
 
     return h;
 }
@@ -244,9 +244,9 @@ SolNum Sampler::bounded_sol_count(
             assert(solver->get_model()[var] != l_Undef);
             lits.push_back(Lit(var, solver->get_model()[var] == l_True));
         }
-//         if (conf.verb_Sampler_cls) {
-//             cout << "c [Sampler] Adding banning clause: " << lits << endl;
-//         }
+        if (conf.verb_Sampler_cls) {
+            cout << "c [Sampler] Adding banning clause: " << lits << endl;
+        }
         solver->add_clause(lits);
     }
 
@@ -282,9 +282,13 @@ SolNum Sampler::bounded_sol_count(
     return SolNum(solutions, repeat);
 }
 
-void Sampler::sample(ApproxMC::SolCount solCount)
+void Sampler::sample(
+    const ApproxMC::SolCount solCount,
+    const uint32_t num_samples,
+    std::ostream* _samples_out)
 {
     solver = appmc->get_solver();
+    samples_out = _samples_out;
     orig_num_vars = solver->nVars();
     startTime = cpuTimeTotal();
 
@@ -319,7 +323,7 @@ void Sampler::sample(ApproxMC::SolCount solCount)
         conf.startiter = 0;   /* Indicate ideal sampling case */
     }
     samples_out = backup;
-    generate_samples();
+    generate_samples(num_samples);
 }
 
 vector<Lit> Sampler::set_num_hashes(
@@ -366,17 +370,17 @@ void Sampler::simplify()
 }
 
 
-void Sampler::generate_samples()
+void Sampler::generate_samples(const uint32_t num_samples_needed)
 {
     assert(samples_out != NULL);
     double genStartTime = cpuTimeTotal();
 
     hiThresh = ceil(1 + (1.4142136 * (1 + conf.kappa) * threshold_Samplergen));
     loThresh = floor(threshold_Samplergen / (1.4142136 * (1 + conf.kappa)));
-    const uint32_t samplesPerCall = sols_to_return(conf.samples);
+    const uint32_t samplesPerCall = sols_to_return(num_samples_needed);
     const uint32_t callsNeeded =
-        conf.samples / samplesPerCall + (bool)(conf.samples % samplesPerCall);
-    cout << "Samples requested: " << conf.samples << endl;
+        num_samples_needed / samplesPerCall + (bool)(num_samples_needed % samplesPerCall);
+    cout << "Samples requested: " << num_samples_needed << endl;
     cout << "samples per XOR set:" << samplesPerCall << endl;
     cout << "-> calls needed: " << callsNeeded << endl;
 
@@ -393,10 +397,11 @@ void Sampler::generate_samples()
     uint32_t samples = 0;
     if (conf.startiter > 0) {
         uint32_t lastSuccessfulHashOffset = 0;
-        while(samples < conf.samples) {
+        while(samples < num_samples_needed) {
             samples += gen_n_samples(
                 callsPerLoop,
-                &lastSuccessfulHashOffset);
+                &lastSuccessfulHashOffset,
+                num_samples_needed);
         }
     } else {
         /* Ideal sampling case; enumerate all solutions */
@@ -412,7 +417,7 @@ void Sampler::generate_samples()
         assert(count > 0);
 
         std::uniform_int_distribution<unsigned> uid {0, count-1};
-        for (uint32_t i = 0; i < conf.samples; ++i) {
+        for (uint32_t i = 0; i < num_samples_needed; ++i) {
             vector<string>::iterator it = out_solutions.begin();
             for (uint32_t j = uid(randomEngine); j > 0; --j)    // TODO improve hack
             {
@@ -434,7 +439,8 @@ void Sampler::generate_samples()
 
 uint32_t Sampler::gen_n_samples(
     const uint32_t num_calls
-    , uint32_t* lastSuccessfulHashOffset)
+    , uint32_t* lastSuccessfulHashOffset
+    , const uint32_t num_samples_needed)
 {
     SparseData sparse_data(-1);
     uint32_t num_samples = 0;
@@ -474,7 +480,7 @@ uint32_t Sampler::gen_n_samples(
                       solutionCount, 0, cpuTime()-myTime);
 
             if (ok) {
-                num_samples += sols_to_return(conf.samples);
+                num_samples += sols_to_return(num_samples_needed);
                 *lastSuccessfulHashOffset = currentHashOffset;
                 break;
             }
@@ -600,15 +606,8 @@ uint32_t Sampler::sols_to_return(uint32_t numSolutions)
 
 void Sampler::openLogFile()
 {
-    if (!conf.logfilename.empty()) {
-        logfile.open(conf.logfilename.c_str());
-        if (!logfile.is_open()) {
-            cout << "[Sampler] Cannot open Sampler log file '" << conf.logfilename
-                 << "' for writing." << endl;
-            exit(1);
-        }
-
-        logfile << std::left
+    if (!conf.logfile) {
+        *conf.logfile << std::left
         << std::setw(5) << "sampl"
         << " " << std::setw(4) << "iter"
         << " " << std::setw(4) << "hash"
@@ -632,8 +631,8 @@ void Sampler::write_log(
     double used_time
 )
 {
-    if (!conf.logfilename.empty()) {
-        logfile
+    if (!conf.logfile) {
+        *conf.logfile
         << std::left
         << std::setw(5) << (int)sampling
         << " " << std::setw(4) << iter

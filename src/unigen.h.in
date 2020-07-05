@@ -33,6 +33,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <fstream>
 #include <cryptominisat5/cryptominisat.h>
 #include <cryptominisat5/solvertypesmini.h>
 
@@ -54,18 +55,29 @@ public:
     UniG(ApproxMC::AppMC* appmc);
     ~UniG();
     std::string get_version_info();
-    void sample(const ApproxMC::SolCount* sol_count);
+    void sample(
+        const ApproxMC::SolCount* sol_count,
+        uint32_t num_samples,
+        std::ostream* samples_file = &std::cout);
 
     //Main options
     void set_up_log(std::string log_file_name);
     void set_verbosity(uint32_t verb);
 
     //Misc options -- do NOT to change unless you know what you are doing!
-    void set_sparse(uint32_t sparse);
-    void set_simplify(uint32_t simplify);
+    void set_kappa(double kappa);
+    void set_multisample(bool multisample);
+    void set_only_indep_samples(bool only_indep_samples);
+    void set_verb_sampler_cls(bool verb_sampler_cls);
+    void set_force_sol_extension(bool force_sol_extension);
+    void set_logfile(std::ostream* logfile);
 
     //Querying default values
-    double get_default_kappa();
+    double get_kappa();
+    bool get_multisample();
+    bool get_only_indep_samples();
+    bool get_verb_sampler_cls();
+    bool get_force_sol_extension();
 
 private:
     ////////////////////////////
