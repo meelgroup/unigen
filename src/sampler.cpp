@@ -374,12 +374,12 @@ void Sampler::generate_samples(const uint32_t num_samples_needed)
         num_samples_needed / samplesPerCall + (bool)(num_samples_needed % samplesPerCall);
     cout << "c [unig] Samples requested: " << num_samples_needed << endl;
     cout << "c [unig] samples per XOR set:" << samplesPerCall << endl;
-    cout << "c [unig] -> calls needed: " << callsNeeded << endl;
+    //cout << "c [unig] -> calls needed: " << callsNeeded << endl;
 
     //TODO WARNING what is this 14???????????????????
     uint32_t callsPerLoop = std::min(solver->nVars() / 14, callsNeeded);
     callsPerLoop = std::max(callsPerLoop, 1U);
-    cout << "c [unig] callsPerLoop:" << callsPerLoop << endl;
+    //cout << "c [unig] callsPerLoop:" << callsPerLoop << endl;
 
     cout << "c [unig] starting sample generation."
     << " loThresh: " << loThresh
@@ -677,7 +677,7 @@ bool Sampler::check_model_against_hash(const Hash& h, const vector<lbool>& model
     return !rhs;
 }
 
-string get_version_info()
+string unigen_version_info()
 {
     std::stringstream ss;
     ss << "c UniGen SHA revision " << ::get_version_sha1() << endl;
@@ -694,7 +694,7 @@ string get_version_info()
 
 string Sampler::get_version_info() const
 {
-    string ret = ::get_version_info();
+    string ret = unigen_version_info();
     ret += appmc->get_version_info();
 
     return ret;

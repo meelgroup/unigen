@@ -77,6 +77,10 @@ DLL_PUBLIC void UniG::sample(
     const SolCount* sol_count,
     uint32_t num_samples)
 {
+    if (data->sampler.callback_func == NULL) {
+        std::cout << "ERROR! You must set the callback function or your samples will be lost" << endl;
+        exit(-1);
+    }
     data->sampler.sample(*sol_count, num_samples);
 }
 

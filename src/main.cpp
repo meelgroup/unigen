@@ -194,7 +194,9 @@ void add_supported_options(int argc, char** argv)
         }
 
         if (vm.count("version")) {
-            cout << unigen->get_version_info();
+            ApproxMC::AppMC tmp;
+            UniG tmp2(&tmp);
+            cout << tmp2.get_version_info();
             std::exit(0);
         }
 
@@ -369,9 +371,10 @@ int main(int argc, char** argv)
     }
 
     appmc = new ApproxMC::AppMC;
+    unigen = new UniG(appmc);
     add_supported_options(argc, argv);
     if (verbosity) {
-        cout << appmc->get_version_info();
+        cout << unigen->get_version_info();
         cout << "c executed with command line: " << command_line << endl;
     }
 
@@ -412,7 +415,6 @@ int main(int argc, char** argv)
 
     auto sol_count = appmc->count();
 
-    unigen = new UniG(appmc);
     unigen->set_kappa(kappa);
     unigen->set_multisample(multisample);
     unigen->set_verb_sampler_cls(verb_sampler_cls);
@@ -437,7 +439,7 @@ int main(int argc, char** argv)
         if (!sample_out.is_open()) {
             cout << "[Sampler] Cannot open samples file '" << sample_fname
                  << "' for writing." << endl;
-            exit(1);
+            exit(-1);
         }
         myfile = &sample_out;
     }
