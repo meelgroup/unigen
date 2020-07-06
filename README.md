@@ -80,13 +80,13 @@ You must copy the line starting with `c ind ...` to the top of your CNF before r
 
 ### Guarantees
 
-ApproxMC provides so-called "PAC", or Probably Approximately Correct, guarantees. In less fancy words, the system guarntees that the solution found is within a certain tolerance (called "epsilon") with a certain probability (called "delta"). The default tolerance and probability, i.e. epsilon and delta values, are set to 0.8 and 0.2, respectively. Both values are configurable.
+
 
 ### Issues, questions, bugs, etc.
 Please click on "issues" at the top and [create a new issue](https://github.com/meelgroup/unigen/issues/new). All issues are responded to promptly.
 
 ## How to Cite
-If you use UniGen, please cite the following papers: [CAV20](https://www.comp.nus.edu.sg/~meel/bib/SGM20.bib), [TACAS15](https://www.comp.nus.edu.sg/~meel/bib/CFMSV15a.bib), and [DAC14] (https://www.comp.nus.edu.sg/~meel/bib/CMV14.bib).
+If you use UniGen, please cite the following papers: [CAV20](https://www.comp.nus.edu.sg/~meel/bib/SGM20.bib), [TACAS15](https://www.comp.nus.edu.sg/~meel/bib/CFMSV15a.bib), and [DAC14](https://www.comp.nus.edu.sg/~meel/bib/CMV14.bib).
 
 UniGen builds on a series of papers on hashing-based approach: [Related Publications](https://www.comp.nus.edu.sg/~meel/publications.html)
 
