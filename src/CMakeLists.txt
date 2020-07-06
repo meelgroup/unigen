@@ -78,17 +78,7 @@ set_target_properties(unigen PROPERTIES
     SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
 )
 
-install(TARGETS unigen
-    EXPORT ${UNIGEN_EXPORT_NAME}
-    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
-    PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/unigen"
-)
-
-#unigen_add_public_header(unigen ${CMAKE_CURRENT_SOURCE_DIR}/unigen.h )
-#unigen_add_public_header(unigen ${CMAKE_CURRENT_SOURCE_DIR}/unigenconfig.h )
-
+unigen_add_public_header(unigen ${CMAKE_CURRENT_BINARY_DIR}/unigen/unigen.h )
 
 # -----------------------------------------------------------------------------
 # Copy public headers into build directory include directory.
@@ -106,6 +96,14 @@ foreach(public_header ${unigen_public_headers})
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${public_header} "${HEADER_DEST}"
     )
 endforeach()
+
+install(TARGETS unigen
+    EXPORT ${UNIGEN_EXPORT_NAME}
+    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+    PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/unigen"
+)
 
 add_executable(unigen-bin
     main.cpp

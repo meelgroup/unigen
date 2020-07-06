@@ -30,7 +30,6 @@ Sampler
 #ifndef Sampler_H_
 #define Sampler_H_
 
-#include "config.h"
 #include <gmp.h>
 #include <fstream>
 #include <random>
@@ -40,6 +39,7 @@ Sampler
 #include <cryptominisat5/cryptominisat.h>
 #include <approxmc/approxmc.h>
 #include "unigen/unigen.h"
+#include "config.h"
 
 using std::string;
 using std::vector;

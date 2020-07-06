@@ -25,8 +25,8 @@
  THE SOFTWARE.
  */
 
-#ifndef UNIGENCONFIG
-#define UNIGENCONFIG
+#ifndef UNIGEN_CONFIG_H__
+#define UNIGEN_CONFIG_H__
 
 #include <vector>
 #include <string>
@@ -43,4 +43,4 @@ struct Config {
     std::ostream* logfile = NULL;
 };
 
-#endif //UniGenCONFIG
+#endif
