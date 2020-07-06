@@ -32,11 +32,11 @@ RUN make -j6 \
 
 # build approxmc
 WORKDIR /
-RUN wget https://github.com/meelgroup/approxmc/archive/4.0.0.tar.gz
-RUN tar -xvf 4.0.0.tar.gz
-WORKDIR /approxmc-4.0.0
+RUN wget https://github.com/meelgroup/approxmc/archive/4.0.1.tar.gz
+RUN tar -xvf 4.0.1.tar.gz
+WORKDIR /approxmc-4.0.1
 RUN mkdir build
-WORKDIR /approxmc-4.0.0/build
+WORKDIR /approxmc-4.0.1/build
 RUN cmake -DSTATICCOMPILE=ON ..
 RUN make -j6 \
     && make install
