@@ -10,14 +10,14 @@ If you don't have or don't know what an independent set is, first run our MIS to
 ```
 docker run --rm -v `pwd`/formula.cnf:/in msoos/mis --timeout 300 /in
 [...]
-** Copy-paste the following line in the top of your CNF for ApproxMC **
+** Copy-paste the following line in the top of your CNF for UniGen **
 c ind 3 4 7 8 10 11 14 17 18 26 30 35 36 39 42 47 60 62 67 0
 ```
 Then copy-paste that line into your CNF.
 
 Then run the updated CNF through approxmc:
 ```
-cat formula.cnf | docker run --rm -i -a stdin -a stdout msoos/approxmc
+cat formula.cnf | docker run --rm -i -a stdin -a stdout msoos/unigen
 ```
 
 ## How to Build
@@ -72,7 +72,7 @@ For most applications, we are want all solutions to the problem. To do this, you
 ```
 docker run --rm -v `pwd`/formula.cnf:/in msoos/mis --timeout 300 /in
 [...]
-** Copy-paste the following line in the top of your CNF for ApproxMC **
+** Copy-paste the following line in the top of your CNF for UniGen **
 c ind 3 4 7 8 10 11 14 17 18 26 30 35 36 39 42 47 60 62 67 0
 ```
 
