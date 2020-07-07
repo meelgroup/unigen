@@ -80,8 +80,10 @@ You must copy the line starting with `c ind ...` to the top of your CNF before r
 
 ### Running UniGen
 
+
 ### Guarantees
 
+UniGen ensures that the generated distribution is within (1+\epsilon)-multiplicative factor of the ideal uniform distribution. 
 
 
 ### Issues, questions, bugs, etc.
@@ -95,4 +97,4 @@ UniGen builds on a series of papers on hashing-based approach: [Related Publicat
 ## Contributors
 UniGen is based on research papers published over the period of 2012-20 and co-authored by (in alphabetical order): Supratik Chakraborty, Daniel Fremont, Stephan Gocht, Kuldeep S. Meel, Sanjit A. Seshia, Mate Soos, and Moshe Y. Vardi. 
 
-## Old Versions
+
