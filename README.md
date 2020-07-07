@@ -44,7 +44,7 @@ make
 sudo make install
 cd ../..
 git clone https://github.com/meelgroup/unigen/
-cd unige
+cd unigen
 mkdir build && cd build
 cmake ..
 make
