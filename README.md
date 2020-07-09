@@ -15,7 +15,7 @@ c ind 3 4 7 8 10 11 14 17 18 26 30 35 36 39 42 47 60 62 67 0
 ```
 Then copy-paste that line into your CNF.
 
-Then run the updated CNF through approxmc:
+Then run the updated CNF through unigen:
 ```
 cat formula.cnf | docker run --rm -i -a stdin -a stdout msoos/unigen
 ```
@@ -52,7 +52,7 @@ sudo make install
 ```
 
 ## How to Use
-First, you must translate your problem to CNF and just pass your file as input to ApproxMC. Voila -- and it will print the number of solutions of the given CNF formula.
+First, you must translate your problem to CNF and just pass your file as input to UniGen. Voila -- and it will print the set of samples. 
 
 ### Sampling Set
 
