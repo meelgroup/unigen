@@ -66,7 +66,6 @@ double epsilon;
 double delta;
 string logfilename;
 uint32_t verb_banning_cls = 0;
-uint32_t num_threads = 1;
 uint32_t simplify;
 double var_elim_ratio;
 uint32_t detach_xors = 1;
@@ -145,8 +144,6 @@ void add_UniGen_options()
     misc_options.add_options()
     ("verbanbcls", po::value(&verb_banning_cls)->default_value(verb_banning_cls)
         ,"Print banning clause + xor clauses. Highly verbose.")
-    ("th", po::value(&num_threads)->default_value(num_threads),
-         "How many solving threads to use per solver call")
     ("simplify", po::value(&simplify)->default_value(simplify)
         , "Simplify agressiveness")
     ("velimratio", po::value(&var_elim_ratio)->default_value(var_elim_ratio, my_var_elim_ratio.str())
@@ -392,7 +389,6 @@ int main(int argc, char** argv)
     appmc->set_sparse(sparse);
 
     //Misc options
-    appmc->set_num_threads(num_threads);
     appmc->set_simplify(simplify);
     appmc->set_var_elim_ratio(var_elim_ratio);
 
