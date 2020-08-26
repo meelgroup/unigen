@@ -65,7 +65,7 @@ uint32_t seed;
 double epsilon;
 double delta;
 string logfilename;
-uint32_t verb_cls = 0;
+uint32_t verb_banning_cls = 0;
 uint32_t num_threads = 1;
 uint32_t simplify;
 double var_elim_ratio;
@@ -143,7 +143,7 @@ void add_UniGen_options()
     ;
 
     misc_options.add_options()
-    ("verbcls", po::value(&verb_cls)->default_value(verb_cls)
+    ("verbanbcls", po::value(&verb_banning_cls)->default_value(verb_banning_cls)
         ,"Print banning clause + xor clauses. Highly verbose.")
     ("th", po::value(&num_threads)->default_value(num_threads),
          "How many solving threads to use per solver call")
@@ -392,7 +392,6 @@ int main(int argc, char** argv)
     appmc->set_sparse(sparse);
 
     //Misc options
-    appmc->set_verb_cls(verb_cls);
     appmc->set_num_threads(num_threads);
     appmc->set_simplify(simplify);
     appmc->set_var_elim_ratio(var_elim_ratio);
@@ -415,9 +414,10 @@ int main(int argc, char** argv)
 
     auto sol_count = appmc->count();
 
+    unigen->set_verbosity(verbosity);
+    unigen->set_verb_banning_cls(verb_banning_cls);
     unigen->set_kappa(kappa);
     unigen->set_multisample(multisample);
-    unigen->set_verb_sampler_cls(verb_sampler_cls);
     unigen->set_only_indep_samples(only_indep_samples);
     unigen->set_force_sol_extension(force_sol_extension);
 

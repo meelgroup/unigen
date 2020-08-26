@@ -105,6 +105,7 @@ struct SparseData {
 class Sampler {
 public:
     void sample(
+        const Config conf,
         const SolCount sol_count,
         const uint32_t num_samples);
     AppMC* appmc;

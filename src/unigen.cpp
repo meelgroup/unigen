@@ -81,7 +81,7 @@ DLL_PUBLIC void UniG::sample(
         std::cout << "ERROR! You must set the callback function or your samples will be lost" << endl;
         exit(-1);
     }
-    data->sampler.sample(*sol_count, num_samples);
+    data->sampler.sample(data->conf, *sol_count, num_samples);
 }
 
 DLL_PUBLIC string UniG::get_version_info()
@@ -106,7 +106,7 @@ DLL_PUBLIC bool UniG::get_only_indep_samples()
 
 DLL_PUBLIC bool UniG::get_verb_sampler_cls()
 {
-    return data->conf.verb_Sampler_cls;
+    return data->conf.verb_banning_cls;
 }
 
 DLL_PUBLIC void UniG::set_kappa(double kappa)
@@ -124,9 +124,9 @@ DLL_PUBLIC void UniG::set_only_indep_samples(bool only_indep_samples)
     data->conf.only_indep_samples = only_indep_samples;
 }
 
-DLL_PUBLIC void UniG::set_verb_sampler_cls(bool verb_sampler_cls)
+DLL_PUBLIC void UniG::set_verb_banning_cls(bool verb_banning_cls)
 {
-    data->conf.verb_Sampler_cls = verb_sampler_cls;
+    data->conf.verb_banning_cls = verb_banning_cls;
 }
 
 DLL_PUBLIC bool UniG::get_force_sol_extension()
@@ -142,4 +142,9 @@ DLL_PUBLIC void UniG::set_force_sol_extension(bool force_sol_extension)
 DLL_PUBLIC void UniG::set_logfile(std::ostream* logfile)
 {
     data->conf.logfile = logfile;
+}
+
+DLL_PUBLIC void UniG::set_verbosity(uint32_t verb)
+{
+    data->conf.verb = verb;
 }

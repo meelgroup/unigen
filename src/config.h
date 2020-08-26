@@ -35,7 +35,7 @@
 struct Config {
     uint32_t startiter = 0;
     unsigned verb = 1;
-    unsigned verb_Sampler_cls = 0;
+    unsigned verb_banning_cls = 0;
     bool only_indep_samples = true;
     uint32_t multisample = 1;
     int force_sol_extension = 0;

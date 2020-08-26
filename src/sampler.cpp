@@ -76,7 +76,7 @@ Hash Sampler::add_hash(uint32_t hash_index)
 
     vars.push_back(act_var);
     solver->add_xor_clause(vars, rhs);
-    if (conf.verb_Sampler_cls) {
+    if (conf.verb_banning_cls) {
         print_xor(vars, rhs);
     }
 
@@ -147,12 +147,14 @@ SolNum Sampler::bounded_sol_count(
         HashesModels* hm,
         vector<vector<int>>* out_solutions
 ) {
-    cout << "c [unig] "
-    "[ " << std::setw(7) << std::setprecision(2) << std::fixed
-    << (cpuTimeTotal()-startTime)
-    << " ]"
-    << " bounded_sol_count looking for " << std::setw(4) << maxSolutions << " solutions"
-    << " -- hashes active: " << hashCount << endl;
+    if (conf.verb) {
+        cout << "c [unig] "
+        "[ " << std::setw(7) << std::setprecision(2) << std::fixed
+        << (cpuTimeTotal()-startTime)
+        << " ]"
+        << " bounded_sol_count looking for " << std::setw(4) << maxSolutions << " solutions"
+        << " -- hashes active: " << hashCount << endl;
+    }
 
     //Will we need to extend the solution?
     bool only_indep_sol = true;
@@ -244,7 +246,7 @@ SolNum Sampler::bounded_sol_count(
             assert(solver->get_model()[var] != l_Undef);
             lits.push_back(Lit(var, solver->get_model()[var] == l_True));
         }
-        if (conf.verb_Sampler_cls) {
+        if (conf.verb_banning_cls) {
             cout << "c [unig] Adding banning clause: " << lits << endl;
         }
         solver->add_clause(lits);
@@ -283,9 +285,11 @@ SolNum Sampler::bounded_sol_count(
 }
 
 void Sampler::sample(
+    Config _conf,
     const ApproxMC::SolCount solCount,
     const uint32_t num_samples)
 {
+    conf = _conf;
     solver = appmc->get_solver();
     orig_num_vars = solver->nVars();
     startTime = cpuTimeTotal();
@@ -316,6 +320,7 @@ void Sampler::sample(
     } else {
         conf.startiter = 0;   /* Indicate ideal sampling case */
     }
+
     generate_samples(num_samples);
 }
 
@@ -372,19 +377,24 @@ void Sampler::generate_samples(const uint32_t num_samples_needed)
     const uint32_t samplesPerCall = sols_to_return(num_samples_needed);
     const uint32_t callsNeeded =
         num_samples_needed / samplesPerCall + (bool)(num_samples_needed % samplesPerCall);
-    cout << "c [unig] Samples requested: " << num_samples_needed << endl;
-    cout << "c [unig] samples per XOR set:" << samplesPerCall << endl;
-    //cout << "c [unig] -> calls needed: " << callsNeeded << endl;
+
+    if (conf.verb) {
+        cout << "c [unig] Samples requested: " << num_samples_needed << endl;
+        cout << "c [unig] samples per XOR set:" << samplesPerCall << endl;
+        //cout << "c [unig] -> calls needed: " << callsNeeded << endl;
+    }
 
     //TODO WARNING what is this 14???????????????????
     uint32_t callsPerLoop = std::min(solver->nVars() / 14, callsNeeded);
     callsPerLoop = std::max(callsPerLoop, 1U);
     //cout << "c [unig] callsPerLoop:" << callsPerLoop << endl;
 
-    cout << "c [unig] starting sample generation."
-    << " loThresh: " << loThresh
-    << ", hiThresh: " << hiThresh
-    << ", startiter: " << conf.startiter << endl;
+    if (conf.verb) {
+        cout << "c [unig] starting sample generation."
+        << " loThresh: " << loThresh
+        << ", hiThresh: " << hiThresh
+        << ", startiter: " << conf.startiter << endl;
+    }
 
     uint32_t samples = 0;
     if (conf.startiter > 0) {
