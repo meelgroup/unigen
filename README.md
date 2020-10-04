@@ -1,4 +1,5 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![build](https://github.com/meelgroup/unigen/workflows/build/badge.svg)
 
 # UniGen3: Almost-Uniform Sampler
 UniGen3 is the state of the art almost-uniform sampler  utilizing an improved version of CryptoMiniSat to handle problems of size and complexity that were not possible before. The current version is based on work Mate Soos, Stephan Gocht, and Kuldeep S. Meel, as [published in CAV-20](http://comp.nus.edu.sg/~meel/Papers/cav20-sgm.pdf). Please see below for credits.  A large part of the work is in CryptoMiniSat [here](https://github.com/msoos/cryptominisat).
