@@ -23,14 +23,11 @@ cat formula.cnf | docker run --rm -i -a stdin -a stdout msoos/unigen
 ```
 
 ## How to Build
-To build on Linux, you will need the following:
+To build on Linux:
+
 ```
 sudo apt-get install build-essential cmake
 sudo apt-get install zlib1g-dev libboost-program-options-dev libm4ri-dev
-```
-
-Then, build CryptoMiniSat, ApproxMC, and UniGen:
-```
 git clone https://github.com/msoos/cryptominisat
 cd cryptominisat
 mkdir build && cd build
@@ -52,9 +49,6 @@ cmake ..
 make
 sudo make install
 ```
-
-## How to Use
-First, you must translate your problem to CNF and just pass your file as input to UniGen. Voila -- and it will print the set of samples. 
 
 ### Sampling Set
 
@@ -80,11 +74,53 @@ c ind 3 4 7 8 10 11 14 17 18 26 30 35 36 39 42 47 60 62 67 0
 
 You must copy the line starting with `c ind ...` to the top of your CNF before running ApproxMC.
 
-### Running UniGen
+### Library Use
+Below is an example library use:
+
+```
+#include <unigen/unigen.h>
+using namespace CMSat;
+using namespace UniGen;
+using std::cout;
+using std::endl;
+
+void mycallback(const std::vector<int>& solution, void*)
+{
+    for(uint32_t i = 0; i < solution.size(); i++) {
+        cout << solution[i] <<  " ";
+    }
+     cout << "0" << endl;
+}
+
+int main () {
+    auto appmc = new ApproxMC::AppMC;
+    auto unigen = new UniG(appmc);
+    appmc->set_verbosity(verbosity);
+    unigen->set_callback(mycallback, NULL);
+    vector<Lit> lits;
+
+    appmc->add_variables(3);
+    lits.clear();
+    lits.push_back(Lit(0, true));
+    lits.push_back(Lit(1, true));
+    appmc->addClause(lits);
+
+    auto sol_count = appmc->count();
+    unigen->sample(&sol_count, num_samples);
+
+    lits.clear();
+    lits.push_back(Lit(0, true));
+    lits.push_back(Lit(2, true));
+    appmc->addClause(lits);
+
+    sol_count = appmc->count();
+    unigen->sample(&sol_count, num_samples);
+    return 0;
+}
+```
 
 
 ### Guarantees
-
 UniGen ensures that the generated distribution is within (1+\epsilon)-multiplicative factor of the ideal uniform distribution. 
 
 
