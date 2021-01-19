@@ -57,6 +57,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${CRYPTOMINISAT5_INCLUDE_DIRS})
 include_directories(${APPROXMC_INCLUDE_DIRS})
 include_directories(${GMP_INCLUDE_DIRS})
+include_directories(${ARJUN_INCLUDE_DIRS})
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/unigen.h.in" "${CMAKE_CURRENT_BINARY_DIR}/unigen/unigen.h" @ONLY)
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GitSHA1.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp" @ONLY)
@@ -120,6 +121,8 @@ IF (ZLIB_FOUND)
 ENDIF()
 
 target_link_libraries(unigen-bin
+    ${ARJUN_LIBRARIES}
+    ${LOUVAIN_COMMUNITIES_LIBRARIES}
     ${CRYPTOMINISAT5_LIBRARIES}
     ${APPROXMC_LIBRARIES}
     ${unigen_exec_link_libs}
