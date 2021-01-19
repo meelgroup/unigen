@@ -74,7 +74,7 @@ uint32_t force_sol_extension = 0;
 uint32_t sparse;
 
 //sampling
-uint32_t num_samples = 20;
+uint32_t num_samples = 500;
 int only_indep_samples ;
 int multisample;
 std::string sample_fname;
@@ -152,7 +152,7 @@ void add_UniGen_options()
 
     sampling_options.add_options()
     ("samples", po::value(&num_samples)->default_value(num_samples)
-        , "Number of random samples to generate")
+        , "Number of random samples to generate. CAV2020 paper has 500, the default")
     ("nosolext", po::value(&only_indep_samples)->default_value(only_indep_samples)
         , "Should only output the independent vars from the samples")
     ("multisample", po::value(&multisample)->default_value(multisample)
