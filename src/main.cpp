@@ -188,6 +188,7 @@ void add_UniGen_options()
     ;
 
     help_options.add(main_options);
+    help_options.add(arjun_options);
     help_options.add(sampling_options);
     help_options.add(improvement_options);
     help_options.add(misc_options);
