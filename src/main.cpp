@@ -82,9 +82,6 @@ int ignore_sampl_set = 0;
 int do_arjun = 1;
 int debug_arjun = 0;
 int arjun_incidence_sort;
-int recompute_indep_set = 0;
-int arjun_gauss_jordan;
-int arjun_forward;
 
 //sampling
 uint32_t num_samples = 500;
@@ -145,7 +142,6 @@ void add_UniGen_options()
 
     ArjunNS::Arjun tmpa;
     arjun_incidence_sort = tmpa.get_incidence_sort();
-    arjun_gauss_jordan = tmpa.get_gauss_jordan();
 
     arjun_options.add_options()
     ("arjun", po::value(&do_arjun)->default_value(do_arjun)
@@ -154,10 +150,6 @@ void add_UniGen_options()
         , "Select incidence sorting. Probe-based is 3. Simple incidence-based is 1. Component-to-other-component based is 5. Random is 5")
     ("debugarjun", po::value(&debug_arjun)->default_value(debug_arjun)
         , "Use CNF from Arjun, but use sampling set from CNF")
-    ("arjunrecom", po::value(&recompute_indep_set)->default_value(recompute_indep_set)
-        , "Recompute the independent set at every XOR addition")
-    ("arjungj", po::value(&arjun_gauss_jordan)->default_value(arjun_gauss_jordan)
-        , "Should Arjun use XORs")
     ;
 
     improvement_options.add_options()
@@ -549,8 +541,6 @@ int main(int argc, char** argv)
         arjun->set_seed(seed);
         arjun->set_verbosity(verbosity);
         arjun->set_incidence_sort(arjun_incidence_sort);
-        arjun->set_gauss_jordan(arjun_gauss_jordan);
-        arjun->set_forward(arjun_forward);
         read_input_cnf(arjun);
         print_orig_sampling_vars(sampling_vars, arjun);
         auto old_sampling_vars = sampling_vars;
