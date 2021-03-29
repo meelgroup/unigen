@@ -73,6 +73,11 @@ add_library(unigen
     ${unigen_lib_files}
 )
 
+target_include_directories(unigen PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
+
 set_target_properties(unigen PROPERTIES
     PUBLIC_HEADER "${unigen_public_headers}"
     VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
