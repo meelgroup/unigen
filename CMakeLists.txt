@@ -477,6 +477,9 @@ else()
     message(FATAL_ERROR "Cannot find ApproxMC. Please install it! Exiting.")
 endif()
 
+find_package(arjun CONFIG REQUIRED)
+find_package(louvain_communities CONFIG REQUIRED)
+
 # -----------------------------------------------------------------------------
 # Provide an export name to be used by targets that wish to export themselves.
 # -----------------------------------------------------------------------------
