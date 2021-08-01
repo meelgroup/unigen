@@ -513,6 +513,13 @@ int main(int argc, char** argv)
         cout << unigen->get_version_info();
         cout << "c executed with command line: " << command_line << endl;
     }
+    if (!only_indep_samples) {
+        force_sol_extension = true;
+        if (verbosity) {
+            cout << "c Setting '--forcesolextension' to 1 since '--nosolext' is set to 0" << endl;
+        }
+    }
+
 
     //Main options
     appmc->set_verbosity(verbosity);
