@@ -1,6 +1,9 @@
 from pyapproxmc import Counter
 from pyunigen import Sampler
 
+NUM_SAMPLES = 1000
+SAMPLE_TOL = 0.20
+
 def minimal_test():
     counter = Counter(seed=2157, epsilon=0.5, delta=0.15)
     counter.add_clause(list(range(1,100)))
@@ -20,24 +23,34 @@ def sampling_set_test():
     sampler.sample(cell_count, hash_count)
 
 def real_example_test():
-    counter = Counter(seed=120, epsilon=0.8, delta=0.2, sampling_set=list(range(1,21)))
-    sampler = Sampler(seed=120, sampling_set=range(1,21))
+    print("sampling")
+    counter = Counter(seed=120, epsilon=0.01, delta=0.001)
+    print("done")
+    sampler = Sampler(seed=120, kappa=0.15)
 
-    with open("test_1.cnf") as test_cnf:
-        # Pop sampling set and metadata lines
-        lines = test_cnf.readlines()[2:]
-
-        # Add clauses to counter
-        for line in lines:
-            literals = [int(i) for i in line.split()[:-1]]
-            counter.add_clause(literals)
-            sampler.add_clause(literals)
+    # Create formula with 10 variables, in which 9 or 10
+    # must be true. Should have roughly 50-50 (true-false)
+    # split on variables 1-8 and 66-33 split for variables 9, 10.
+    counter.add_clause([9,10])
+    sampler.add_clause([9,10])
 
     cell_count, hash_count = counter.count()
 
-    # Sammple multiple times this time.
-    for i in range(50):
-        sampler.sample(cell_count, hash_count)
+    samples = []
+
+    # Sample multiple times this time.
+    for i in range(NUM_SAMPLES):
+        print(i)
+        new_sample = sampler.sample(cell_count, hash_count)
+        samples.append([1 if val > 0 else 0 for val in new_sample])
+
+    counts = [sum(sample)/NUM_SAMPLES for sample in zip(*samples)]
+
+    for i in range(8):
+        assert 0.5 - SAMPLE_TOL <= counts[i] <= 0.5 + SAMPLE_TOL
+
+    for i in range(8,10):
+        assert 0.66 - SAMPLE_TOL <= counts[i] <= 0.66 + SAMPLE_TOL
 
 if __name__ == '__main__':
     minimal_test()
