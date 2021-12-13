@@ -23,9 +23,7 @@ def sampling_set_test():
     sampler.sample(cell_count, hash_count)
 
 def real_example_test():
-    print("sampling")
     counter = Counter(seed=120, epsilon=0.01, delta=0.001)
-    print("done")
     sampler = Sampler(seed=120, kappa=0.15)
 
     # Create formula with 10 variables, in which 9 or 10
@@ -40,7 +38,6 @@ def real_example_test():
 
     # Sample multiple times this time.
     for i in range(NUM_SAMPLES):
-        print(i)
         new_sample = sampler.sample(cell_count, hash_count)
         samples.append([1 if val > 0 else 0 for val in new_sample])
 
