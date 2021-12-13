@@ -430,14 +430,16 @@ void Sampler::generate_samples(const uint32_t num_samples_needed)
         }
     }
 
-    cout
-    << "c [unig] Time to sample: "
-    << cpuTimeTotal() - genStartTime
-    << " s"
-    << " -- Time count+samples: " << cpuTimeTotal() << " s"
-    << endl;
+    if (conf.verb) {
+        cout
+        << "c [unig] Time to sample: "
+        << cpuTimeTotal() - genStartTime
+        << " s"
+        << " -- Time count+samples: " << cpuTimeTotal() << " s"
+        << endl;
 
-    cout << "c [unig] Samples generated: " << samples << endl;
+        cout << "c [unig] Samples generated: " << samples << endl;
+    }
 }
 
 uint32_t Sampler::gen_n_samples(
