@@ -50,6 +50,8 @@ make
 sudo make install
 ```
 
+If you need a static binary, you must build CryptoMiniSat, ApproxMC, and Unigen **all** with the `cmake` argument `-DSTATICCOMPILE=ON`.
+
 ### Sampling Set
 
 For some applications, one is not interested in solutions over all the variables and instead interested in sampling over the solutions projected to a subset of variables, called sampling set. UniGen allows you to specify the sampling set using the following modified version of DIMACS format:
