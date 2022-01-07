@@ -264,7 +264,7 @@ SolNum Sampler::bounded_sol_count(
 
             for (uint32_t i = 0; i < sols_to_return(solutions); i++) {
                 const auto& model = models.at(modelIndices.at(i));
-                (*callback_func)(get_solution_ints(model), callback_func_data);
+                callback_func(get_solution_ints(model), callback_func_data);
             }
         }
     }
@@ -426,7 +426,7 @@ void Sampler::generate_samples(const uint32_t num_samples_needed)
                 ++it;
             }
             samples++;
-            (*callback_func)(*it, callback_func_data);
+            callback_func(*it, callback_func_data);
         }
     }
 
