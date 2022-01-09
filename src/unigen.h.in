@@ -33,6 +33,7 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <functional>
 #include <cryptominisat5/cryptominisat.h>
 #include <cryptominisat5/solvertypesmini.h>
 
@@ -43,7 +44,7 @@ namespace ApproxMC {
 
 namespace UniGen {
 
-typedef void (*callback)(const std::vector<int>& solution, void* data);
+typedef std::function<void(const std::vector<int>& solution, void* data)> callback;
 
 struct UniGenPrivateData;
 #ifdef _WIN32
