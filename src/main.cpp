@@ -78,6 +78,7 @@ uint32_t sparse;
 
 //Arjun
 vector<uint32_t> sampling_vars;
+bool sampling_vars_found = false;
 int ignore_sampl_set = 0;
 int do_arjun = 1;
 int debug_arjun = 0;
@@ -325,6 +326,7 @@ void read_in_file(const string& filename, T* myreader)
     }
 
     sampling_vars = parser.sampling_vars;
+    sampling_vars_found = parser.sampling_vars_found;
 
     #ifndef USE_ZLIB
     fclose(in);
@@ -362,6 +364,7 @@ void read_stdin(T* myreader)
     }
 
     sampling_vars = parser.sampling_vars;
+    sampling_vars_found = parser.sampling_vars_found;
 
     #ifdef USE_ZLIB
     gzclose(in);
@@ -413,7 +416,7 @@ void print_orig_sampling_vars(const vector<uint32_t>& orig_sampling_vars, T* ptr
 uint32_t set_up_sampling_set()
 {
     uint32_t orig_sampling_set_size;
-    if (sampling_vars.empty() || ignore_sampl_set) {
+    if (!sampling_vars_found || ignore_sampl_set) {
         orig_sampling_set_size = arjun->start_with_clean_sampling_set();
     } else {
         orig_sampling_set_size = arjun->set_starting_sampling_set(sampling_vars);
@@ -547,6 +550,7 @@ int main(int argc, char** argv)
     }
 
     vector<uint32_t> empty_occ_sampl_vars;
+    vector<uint32_t> sampling_vars_orig;
     if (do_arjun) {
         //Arjun-based minimization
         arjun = new ArjunNS::Arjun;
@@ -559,7 +563,7 @@ int main(int argc, char** argv)
 
         read_input_cnf(arjun);
         print_orig_sampling_vars(sampling_vars, arjun);
-        auto old_sampling_vars = sampling_vars;
+        sampling_vars_orig = sampling_vars;
         uint32_t orig_sampling_set_size = set_up_sampling_set();
         get_cnf_from_arjun();
         transfer_unit_clauses_from_arjun();
@@ -567,17 +571,19 @@ int main(int argc, char** argv)
         empty_occ_sampl_vars = arjun->get_empty_occ_sampl_vars();
         print_final_indep_set(sampling_vars , orig_sampling_set_size);
         if (debug_arjun) {
-            sampling_vars = old_sampling_vars;
+            sampling_vars = sampling_vars_orig;
+            empty_occ_sampl_vars.clear();
         }
         delete arjun;
     } else {
         read_input_cnf(appmc);
-        if (ignore_sampl_set) {
+        if (!sampling_vars_found || ignore_sampl_set) {
             sampling_vars.clear();
             for(uint32_t i = 0; i < appmc->nVars(); i++) {
                 sampling_vars.push_back(i);
             }
         }
+        sampling_vars_orig = sampling_vars;
         //print_orig_sampling_vars(sampling_vars, appmc);
     }
 
@@ -597,7 +603,7 @@ int main(int argc, char** argv)
     auto sol_count = appmc->count();
     if (do_empty_occ) sol_count.hashCount += empty_occ_sampl_vars.size();
 
-    appmc->set_projection_set(sampling_vars_with_empties);
+    appmc->set_projection_set(sampling_vars_orig);
     unigen->set_verbosity(verbosity);
     unigen->set_verb_banning_cls(verb_banning_cls);
     unigen->set_kappa(kappa);
