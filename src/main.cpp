@@ -82,6 +82,7 @@ int ignore_sampl_set = 0;
 int do_arjun = 1;
 int debug_arjun = 0;
 int arjun_incidence_sort;
+int do_empty_occ = 1;
 
 //sampling
 uint32_t num_samples = 500;
@@ -138,6 +139,8 @@ void add_UniGen_options()
         , "delta parameter as per PAC guarantees; 1-delta is the confidence")
     ("log", po::value(&logfilename),
          "Logs of ApproxMC execution")
+    ("emptyocc", po::value(&do_empty_occ)->default_value(do_empty_occ),
+         "Use empty occ")
     ;
 
     ArjunNS::Arjun tmpa;
@@ -543,6 +546,7 @@ int main(int argc, char** argv)
         cout << "c [appmc] Logfile set " << logfilename << endl;
     }
 
+    vector<uint32_t> empty_occ_sampl_vars;
     if (do_arjun) {
         //Arjun-based minimization
         arjun = new ArjunNS::Arjun;
@@ -560,6 +564,7 @@ int main(int argc, char** argv)
         get_cnf_from_arjun();
         transfer_unit_clauses_from_arjun();
         sampling_vars = arjun->get_indep_set();
+        empty_occ_sampl_vars = arjun->get_empty_occ_sampl_vars();
         print_final_indep_set(sampling_vars , orig_sampling_set_size);
         if (debug_arjun) {
             sampling_vars = old_sampling_vars;
@@ -575,9 +580,24 @@ int main(int argc, char** argv)
         }
         //print_orig_sampling_vars(sampling_vars, appmc);
     }
+
+    const auto sampling_vars_with_empties = sampling_vars;
+    if (do_empty_occ) {
+        std::set<uint32_t> sampl_vars_set;
+        sampl_vars_set.insert(sampling_vars.begin(), sampling_vars.end());
+        for(auto const& v: empty_occ_sampl_vars) {
+            assert(sampl_vars_set.find(v) != sampl_vars_set.end()); // this is guaranteed by arjun
+            sampl_vars_set.erase(v);
+        }
+        sampling_vars.clear();
+        sampling_vars.insert(sampling_vars.end(), sampl_vars_set.begin(), sampl_vars_set.end());
+    }
+
     appmc->set_projection_set(sampling_vars);
     auto sol_count = appmc->count();
+    if (do_empty_occ) sol_count.hashCount += empty_occ_sampl_vars.size();
 
+    appmc->set_projection_set(sampling_vars_with_empties);
     unigen->set_verbosity(verbosity);
     unigen->set_verb_banning_cls(verb_banning_cls);
     unigen->set_kappa(kappa);
