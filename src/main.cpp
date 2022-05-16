@@ -603,7 +603,11 @@ int main(int argc, char** argv)
     auto sol_count = appmc->count();
     if (do_empty_occ) sol_count.hashCount += empty_occ_sampl_vars.size();
 
-    appmc->set_projection_set(sampling_vars_orig);
+    //TODO we need to compute the rest of the sampling vars that are computable
+    //     and output samples that way. So the samples need to be "massaged" actually.
+    //     anyway, fixing it for the moment. Its a sample, but the computable vars
+    //     need to be computed befored returning the sample.
+    appmc->set_projection_set(sampling_vars);
     unigen->set_verbosity(verbosity);
     unigen->set_verb_banning_cls(verb_banning_cls);
     unigen->set_kappa(kappa);
