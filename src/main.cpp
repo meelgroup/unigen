@@ -43,6 +43,7 @@ using std::vector;
 
 #include <cryptominisat5/dimacsparser.h>
 #include <cryptominisat5/streambuffer.h>
+#include <arjun/arjun.h>
 
 using namespace CMSat;
 using namespace UniGen;
@@ -50,9 +51,11 @@ using std::cout;
 using std::cerr;
 using std::endl;
 ApproxMC::AppMC* appmc = NULL;
+ArjunNS::Arjun* arjun = NULL;
 UniG* unigen = NULL;
 
 po::options_description main_options = po::options_description("Main options");
+po::options_description arjun_options = po::options_description("Arjun options");
 po::options_description improvement_options = po::options_description("Improvement options");
 po::options_description misc_options = po::options_description("Misc options");
 po::options_description sampling_options = po::options_description("Sampling options");
@@ -73,8 +76,17 @@ uint32_t reuse_models = 1;
 uint32_t force_sol_extension = 0;
 uint32_t sparse;
 
+//Arjun
+vector<uint32_t> sampling_vars;
+bool sampling_vars_found = false;
+int ignore_sampl_set = 0;
+int do_arjun = 1;
+int debug_arjun = 0;
+int arjun_incidence_sort;
+int do_empty_occ = 1;
+
 //sampling
-uint32_t num_samples = 20;
+uint32_t num_samples = 500;
 int only_indep_samples ;
 int multisample;
 std::string sample_fname;
@@ -128,6 +140,20 @@ void add_UniGen_options()
         , "delta parameter as per PAC guarantees; 1-delta is the confidence")
     ("log", po::value(&logfilename),
          "Logs of ApproxMC execution")
+    ("emptyocc", po::value(&do_empty_occ)->default_value(do_empty_occ),
+         "Use empty occ")
+    ;
+
+    ArjunNS::Arjun tmpa;
+    arjun_incidence_sort = tmpa.get_incidence_sort();
+
+    arjun_options.add_options()
+    ("arjun", po::value(&do_arjun)->default_value(do_arjun)
+        , "Use arjun to minimize sampling set")
+    ("arjuninc", po::value(&arjun_incidence_sort)->default_value(arjun_incidence_sort)
+        , "Select incidence sorting. Probe-based is 3. Simple incidence-based is 1. Component-to-other-component based is 5. Random is 5")
+    ("debugarjun", po::value(&debug_arjun)->default_value(debug_arjun)
+        , "Use CNF from Arjun, but use sampling set from CNF")
     ;
 
     improvement_options.add_options()
@@ -152,7 +178,7 @@ void add_UniGen_options()
 
     sampling_options.add_options()
     ("samples", po::value(&num_samples)->default_value(num_samples)
-        , "Number of random samples to generate")
+        , "Number of random samples to generate. CAV2020 paper has 500, the default")
     ("nosolext", po::value(&only_indep_samples)->default_value(only_indep_samples)
         , "Should only output the independent vars from the samples")
     ("multisample", po::value(&multisample)->default_value(multisample)
@@ -166,6 +192,7 @@ void add_UniGen_options()
     ;
 
     help_options.add(main_options);
+    help_options.add(arjun_options);
     help_options.add(sampling_options);
     help_options.add(improvement_options);
     help_options.add(misc_options);
@@ -274,14 +301,15 @@ void add_supported_options(int argc, char** argv)
     }
 }
 
-void read_in_file(const string& filename)
+template<class T>
+void read_in_file(const string& filename, T* myreader)
 {
     #ifndef USE_ZLIB
     FILE * in = fopen(filename.c_str(), "rb");
-    DimacsParser<StreamBuffer<FILE*, FN>, ApproxMC::AppMC> parser(appmc, NULL, verbosity);
+    DimacsParser<StreamBuffer<FILE*, FN>, T> parser(myreader, NULL, verbosity);
     #else
     gzFile in = gzopen(filename.c_str(), "rb");
-    DimacsParser<StreamBuffer<gzFile, GZ>, ApproxMC::AppMC> parser(appmc, NULL, verbosity);
+    DimacsParser<StreamBuffer<gzFile, GZ>, T> parser(myreader, NULL, verbosity);
     #endif
 
     if (in == NULL) {
@@ -297,7 +325,8 @@ void read_in_file(const string& filename)
         exit(-1);
     }
 
-    appmc->set_projection_set(parser.sampling_vars);
+    sampling_vars = parser.sampling_vars;
+    sampling_vars_found = parser.sampling_vars_found;
 
     #ifndef USE_ZLIB
     fclose(in);
@@ -306,7 +335,8 @@ void read_in_file(const string& filename)
     #endif
 }
 
-void read_stdin()
+template<class T>
+void read_stdin(T* myreader)
 {
     cout
     << "c Reading from standard input... Use '-h' or '--help' for help."
@@ -324,16 +354,17 @@ void read_stdin()
     }
 
     #ifndef USE_ZLIB
-    DimacsParser<StreamBuffer<FILE*, FN>, ApproxMC::AppMC> parser(appmc, NULL, verbosity);
+    DimacsParser<StreamBuffer<FILE*, FN>, T> parser(myreader, NULL, verbosity);
     #else
-    DimacsParser<StreamBuffer<gzFile, GZ>, ApproxMC::AppMC> parser(appmc, NULL, verbosity);
+    DimacsParser<StreamBuffer<gzFile, GZ>, T> parser(myreader, NULL, verbosity);
     #endif
 
     if (!parser.parse_DIMACS(in, false)) {
         exit(-1);
     }
 
-    appmc->set_projection_set(parser.sampling_vars);
+    sampling_vars = parser.sampling_vars;
+    sampling_vars_found = parser.sampling_vars_found;
 
     #ifdef USE_ZLIB
     gzclose(in);
@@ -347,6 +378,120 @@ void mycallback(const std::vector<int>& solution, void *file)
         (*os) << solution[i] <<  " ";
     }
     (*os) << "0" << endl;
+}
+
+template<class T>
+void read_input_cnf(T* reader)
+{
+    //Init Arjun, read in file, get minimal indep set
+    if (vm.count("input") != 0) {
+        vector<string> inp = vm["input"].as<vector<string> >();
+        if (inp.size() > 1) {
+            cout << "[appmc] ERROR: you must only give one CNF as input" << endl;
+            exit(-1);
+        }
+
+        read_in_file(inp[0].c_str(), reader);
+    } else {
+        read_stdin(reader);
+    }
+}
+
+template<class T>
+void print_orig_sampling_vars(const vector<uint32_t>& orig_sampling_vars, T* ptr)
+{
+    if (!orig_sampling_vars.empty()) {
+        cout << "Original sampling vars: ";
+        for(auto v: orig_sampling_vars) {
+            cout << v << " ";
+        }
+        cout << endl;
+        cout << "c [appmc] Orig sampling vars size: " << orig_sampling_vars.size() << endl;
+    } else {
+        cout << "c [appmc] No original sampling vars given" << endl;
+        cout << "c [appmc] Orig sampling vars size: " << ptr->nVars() << endl;
+    }
+}
+
+uint32_t set_up_sampling_set()
+{
+    uint32_t orig_sampling_set_size;
+    if (!sampling_vars_found || ignore_sampl_set) {
+        orig_sampling_set_size = arjun->start_with_clean_sampling_set();
+    } else {
+        orig_sampling_set_size = arjun->set_starting_sampling_set(sampling_vars);
+    }
+
+    return orig_sampling_set_size;
+}
+
+void get_cnf_from_arjun()
+{
+    bool ret = true;
+    const uint32_t orig_num_vars = arjun->get_orig_num_vars();
+    appmc->new_vars(orig_num_vars);
+    arjun->start_getting_small_clauses(
+        std::numeric_limits<uint32_t>::max(),
+        std::numeric_limits<uint32_t>::max(),
+        false);
+    vector<Lit> clause;
+    while (ret) {
+        ret = arjun->get_next_small_clause(clause);
+        if (!ret) {
+            break;
+        }
+
+        bool ok = true;
+        for(auto l: clause) {
+            if (l.var() >= orig_num_vars) {
+                ok = false;
+                break;
+            }
+        }
+
+        if (ok) {
+            appmc->add_clause(clause);
+        }
+
+    }
+    arjun->end_getting_small_clauses();
+}
+
+void transfer_unit_clauses_from_arjun()
+{
+    vector<Lit> cl(1);
+    auto units = arjun->get_zero_assigned_lits();
+    for(const auto& unit: units) {
+        if (unit.var() < appmc->nVars()) {
+            cl[0] = unit;
+            appmc->add_clause(cl);
+        }
+    }
+}
+
+inline double stats_line_percent(double num, double total)
+{
+    if (total == 0) {
+        return 0;
+    } else {
+        return num/total*100.0;
+    }
+}
+
+void print_final_indep_set(const vector<uint32_t>& indep_set, uint32_t orig_sampling_set_size)
+{
+    cout << "vp ";
+    for(const uint32_t s: indep_set) {
+        cout << s+1 << " ";
+    }
+    cout << "0" << endl;
+
+    cout << "c [arjun] final set size: " << std::setw(8)
+    << indep_set.size()
+    << " percent of original: "
+    <<  std::setw(6) << std::setprecision(4)
+    << stats_line_percent(indep_set.size(), orig_sampling_set_size)
+    << " %" << endl << std::flush;
 }
 
 int main(int argc, char** argv)
@@ -404,19 +549,65 @@ int main(int argc, char** argv)
         cout << "c [appmc] Logfile set " << logfilename << endl;
     }
 
-    if (vm.count("input") != 0) {
-        vector<string> inp = vm["input"].as<vector<string> >();
-        if (inp.size() > 1) {
-            cout << "[appmc] ERROR: you must only give one CNF as input" << endl;
-            exit(-1);
+    vector<uint32_t> empty_occ_sampl_vars;
+    vector<uint32_t> sampling_vars_orig;
+    if (do_arjun) {
+        //Arjun-based minimization
+        arjun = new ArjunNS::Arjun;
+        arjun->set_seed(seed);
+        arjun->set_verbosity(verbosity);
+        arjun->set_incidence_sort(arjun_incidence_sort);
+        if (verbosity) {
+            cout << "c Arjun SHA revision " <<  arjun->get_version_info() << endl;
         }
-        read_in_file(inp[0].c_str());
+
+        read_input_cnf(arjun);
+        print_orig_sampling_vars(sampling_vars, arjun);
+        sampling_vars_orig = sampling_vars;
+        uint32_t orig_sampling_set_size = set_up_sampling_set();
+        get_cnf_from_arjun();
+        transfer_unit_clauses_from_arjun();
+        sampling_vars = arjun->get_indep_set();
+        empty_occ_sampl_vars = arjun->get_empty_occ_sampl_vars();
+        print_final_indep_set(sampling_vars , orig_sampling_set_size);
+        if (debug_arjun) {
+            sampling_vars = sampling_vars_orig;
+            empty_occ_sampl_vars.clear();
+        }
+        delete arjun;
     } else {
-        read_stdin();
+        read_input_cnf(appmc);
+        if (!sampling_vars_found || ignore_sampl_set) {
+            sampling_vars.clear();
+            for(uint32_t i = 0; i < appmc->nVars(); i++) {
+                sampling_vars.push_back(i);
+            }
+        }
+        sampling_vars_orig = sampling_vars;
+        //print_orig_sampling_vars(sampling_vars, appmc);
     }
 
-    auto sol_count = appmc->count();
+    const auto sampling_vars_with_empties = sampling_vars;
+    if (do_empty_occ) {
+        std::set<uint32_t> sampl_vars_set;
+        sampl_vars_set.insert(sampling_vars.begin(), sampling_vars.end());
+        for(auto const& v: empty_occ_sampl_vars) {
+            assert(sampl_vars_set.find(v) != sampl_vars_set.end()); // this is guaranteed by arjun
+            sampl_vars_set.erase(v);
+        }
+        sampling_vars.clear();
+        sampling_vars.insert(sampling_vars.end(), sampl_vars_set.begin(), sampl_vars_set.end());
+    }
 
+    appmc->set_projection_set(sampling_vars);
+    auto sol_count = appmc->count();
+    if (do_empty_occ) sol_count.hashCount += empty_occ_sampl_vars.size();
+
+    //TODO we need to compute the rest of the sampling vars that are computable
+    //     and output samples that way. So the samples need to be "massaged" actually.
+    //     anyway, fixing it for the moment. Its a sample, but the computable vars
+    //     need to be computed befored returning the sample.
+    appmc->set_projection_set(sampling_vars_with_empties);
     unigen->set_verbosity(verbosity);
     unigen->set_verb_banning_cls(verb_banning_cls);
     unigen->set_kappa(kappa);

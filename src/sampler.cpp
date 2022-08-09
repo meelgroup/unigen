@@ -578,9 +578,9 @@ void Sampler::print_xor(const vector<uint32_t>& vars, const uint32_t rhs)
 
 void printVersionInfoSampler()
 {
-    cout << "c Sampler SHA revision " << ::get_version_sha1() << endl;
-    cout << "c Sampler version " << ::get_version_tag() << endl;
-    cout << "c Sampler compilation env " << ::get_compilation_env() << endl;
+    cout << "c Sampler SHA revision " << UnigenIntNS::get_version_sha1() << endl;
+    cout << "c Sampler version " << UnigenIntNS::get_version_tag() << endl;
+    cout << "c Sampler compilation env " << UnigenIntNS::get_compilation_env() << endl;
     #ifdef __GNUC__
     cout << "c Sampler compiled with gcc version " << __VERSION__ << endl;
     #else
@@ -692,9 +692,9 @@ bool Sampler::check_model_against_hash(const Hash& h, const vector<lbool>& model
 string unigen_version_info()
 {
     std::stringstream ss;
-    ss << "c UniGen SHA revision " << ::get_version_sha1() << endl;
-    ss << "c UniGen version " << ::get_version_tag() << endl;
-    ss << "c UniGen compilation env " << ::get_compilation_env() << endl;
+    ss << "c UniGen SHA revision " << UnigenIntNS::get_version_sha1() << endl;
+    ss << "c UniGen version " << UnigenIntNS::get_version_tag() << endl;
+    ss << "c UniGen compilation env " << UnigenIntNS::get_compilation_env() << endl;
     #ifdef __GNUC__
     ss << "c UniGen compiled with gcc version " << __VERSION__ << endl;
     #else
