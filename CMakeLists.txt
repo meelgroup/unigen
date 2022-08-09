@@ -463,7 +463,7 @@ if (louvain_communities_FOUND)
     message(STATUS "Louvain Communities dynamic lib: ${LOUVAIN_COMMUNITIES_LIBRARIES}")
     message(STATUS "Louvain Communities include dirs: ${LOUVAIN_COMMUNITIES_INCLUDE_DIRS}")
 else()
-    message(FATAL_ERROR "Cannot find Louvain Communities libraries. Please install it! Exiting.")
+    message(WARNING "Cannot find Louvain Communities libraries.")
 endif()
 
 find_package(approxmc CONFIG)
@@ -478,7 +478,6 @@ else()
 endif()
 
 find_package(arjun CONFIG REQUIRED)
-find_package(louvain_communities CONFIG REQUIRED)
 
 # -----------------------------------------------------------------------------
 # Provide an export name to be used by targets that wish to export themselves.
