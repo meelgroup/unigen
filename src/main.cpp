@@ -397,7 +397,6 @@ void read_input_cnf(T* reader)
     }
 }
 
-template<class T>
 void print_orig_sampling_vars(const vector<uint32_t>& orig_sampling_vars)
 {
     cout << "c [unig] Original sampling vars: ";
@@ -545,7 +544,7 @@ int main(int argc, char** argv)
         read_input_cnf(arjun);
         set_up_sampling_set();
         sampling_vars_orig = sampling_vars;
-        print_orig_sampling_vars(sampling_vars_orig, arjun);
+        print_orig_sampling_vars(sampling_vars_orig);
         get_cnf_from_arjun();
         sampling_vars = arjun->get_indep_set();
         empty_occ_sampl_vars = arjun->get_empty_occ_sampl_vars();
