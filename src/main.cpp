@@ -400,29 +400,22 @@ void read_input_cnf(T* reader)
 template<class T>
 void print_orig_sampling_vars(const vector<uint32_t>& orig_sampling_vars, T* ptr)
 {
-    if (!orig_sampling_vars.empty()) {
-        cout << "Original sampling vars: ";
-        for(auto v: orig_sampling_vars) {
-            cout << v << " ";
-        }
-        cout << endl;
-        cout << "c [appmc] Orig sampling vars size: " << orig_sampling_vars.size() << endl;
-    } else {
-        cout << "c [appmc] No original sampling vars given" << endl;
-        cout << "c [appmc] Orig sampling vars size: " << ptr->nVars() << endl;
+    cout << "Original sampling vars: ";
+    for(auto v: orig_sampling_vars) {
+        cout << v << " ";
     }
+    cout << endl;
+    cout << "c [appmc] Orig sampling vars size: " << orig_sampling_vars.size() << endl;
 }
 
-uint32_t set_up_sampling_set()
+void set_up_sampling_set()
 {
-    uint32_t orig_sampling_set_size;
     if (!sampling_vars_found || ignore_sampl_set) {
-        orig_sampling_set_size = arjun->start_with_clean_sampling_set();
-    } else {
-        orig_sampling_set_size = arjun->set_starting_sampling_set(sampling_vars);
+        if (!ignore_sampl_set) assert(sampling_vars.empty());
+        sampling_vars.clear();
+        for(uint32_t i = 0; i < arjun->nVars(); i++) sampling_vars.push_back(i);
     }
-
-    return orig_sampling_set_size;
+    arjun->set_starting_sampling_set(sampling_vars);
 }
 
 void get_cnf_from_arjun()
@@ -455,18 +448,6 @@ void get_cnf_from_arjun()
 
     }
     arjun->end_getting_small_clauses();
-}
-
-void transfer_unit_clauses_from_arjun()
-{
-    vector<Lit> cl(1);
-    auto units = arjun->get_zero_assigned_lits();
-    for(const auto& unit: units) {
-        if (unit.var() < appmc->nVars()) {
-            cl[0] = unit;
-            appmc->add_clause(cl);
-        }
-    }
 }
 
 inline double stats_line_percent(double num, double total)
@@ -562,14 +543,13 @@ int main(int argc, char** argv)
         }
 
         read_input_cnf(arjun);
-        print_orig_sampling_vars(sampling_vars, arjun);
+        set_up_sampling_set();
         sampling_vars_orig = sampling_vars;
-        uint32_t orig_sampling_set_size = set_up_sampling_set();
+        print_orig_sampling_vars(sampling_vars_orig, arjun);
         get_cnf_from_arjun();
-        transfer_unit_clauses_from_arjun();
         sampling_vars = arjun->get_indep_set();
         empty_occ_sampl_vars = arjun->get_empty_occ_sampl_vars();
-        print_final_indep_set(sampling_vars , orig_sampling_set_size);
+        print_final_indep_set(sampling_vars , sampling_vars_orig.size());
         if (debug_arjun) {
             sampling_vars = sampling_vars_orig;
             empty_occ_sampl_vars.clear();
@@ -587,7 +567,6 @@ int main(int argc, char** argv)
         //print_orig_sampling_vars(sampling_vars, appmc);
     }
 
-    const auto sampling_vars_with_empties = sampling_vars;
     if (do_empty_occ) {
         std::set<uint32_t> sampl_vars_set;
         sampl_vars_set.insert(sampling_vars.begin(), sampling_vars.end());
@@ -603,11 +582,7 @@ int main(int argc, char** argv)
     auto sol_count = appmc->count();
     if (do_empty_occ) sol_count.hashCount += empty_occ_sampl_vars.size();
 
-    //TODO we need to compute the rest of the sampling vars that are computable
-    //     and output samples that way. So the samples need to be "massaged" actually.
-    //     anyway, fixing it for the moment. Its a sample, but the computable vars
-    //     need to be computed befored returning the sample.
-    appmc->set_projection_set(sampling_vars_with_empties);
+    appmc->set_projection_set(sampling_vars_orig);
     unigen->set_verbosity(verbosity);
     unigen->set_verb_banning_cls(verb_banning_cls);
     unigen->set_kappa(kappa);
