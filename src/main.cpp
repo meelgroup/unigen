@@ -398,14 +398,14 @@ void read_input_cnf(T* reader)
 }
 
 template<class T>
-void print_orig_sampling_vars(const vector<uint32_t>& orig_sampling_vars, T* ptr)
+void print_orig_sampling_vars(const vector<uint32_t>& orig_sampling_vars)
 {
-    cout << "Original sampling vars: ";
+    cout << "c [unig] Original sampling vars: ";
     for(auto v: orig_sampling_vars) {
         cout << v << " ";
     }
     cout << endl;
-    cout << "c [appmc] Orig sampling vars size: " << orig_sampling_vars.size() << endl;
+    cout << "c [unig] Orig sampling vars size: " << orig_sampling_vars.size() << endl;
 }
 
 void set_up_sampling_set()
@@ -461,7 +461,7 @@ inline double stats_line_percent(double num, double total)
 
 void print_final_indep_set(const vector<uint32_t>& indep_set, uint32_t orig_sampling_set_size)
 {
-    cout << "vp ";
+    cout << "c [arjun] final indep set: ";
     for(const uint32_t s: indep_set) {
         cout << s+1 << " ";
     }
