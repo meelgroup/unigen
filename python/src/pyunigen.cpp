@@ -1,4 +1,27 @@
-// Python bindings for Unigen, heavily based on the Python bindings written for CryptoMiniSat.
+/*************
+Python bindings for Unigen, heavily based on the Python bindings written for CryptoMiniSat
+
+Copyright (c) 2021 Eric Vin
+              2022 Mate Soos
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+**********************************/
 
 #include <Python.h>
 #include <unigen/unigen.h>
@@ -24,14 +47,13 @@ typedef struct {
 } Sampler;
 
 static const char sampler_create_docstring[] = \
-"Sampler(verbosity=0, seed=1, kappa=0.638, sampling_set=None)\n\
+"Sampler(verbosity=0, seed=1, kappa=0.638)\n\
 Create Sampler object.\n\
 \n\
 :param verbosity: Verbosity level: 0: nothing printed; 15: very verbose.\n\
 :param seed: Random seed\n\
 :param kappa: Uniformity parameter (see TACAS-15 paper)\n\
-:param sampling_set: (Optional) If provided, the solutions are sampled almost uniformly\n\
-    over the variables in sampling_set.";
+";
 
 /********** Internal Functions **********/
 
@@ -91,7 +113,7 @@ static int parse_sampling_set(Sampler *self, PyObject *sample_set_obj)
 
 static void setup_sampler(Sampler *self, PyObject *args, PyObject *kwds)
 {
-    static char* kwlist[] = {"verbosity", "seed", "kappa", "sampling_set", NULL};
+    static char* kwlist[] = {"verbosity", "seed", "kappa", NULL};
 
     // All parameters have the same default as the command line defaults
     // except for verbosity which is 0 by default.
@@ -99,15 +121,10 @@ static void setup_sampler(Sampler *self, PyObject *args, PyObject *kwds)
     self->seed = 1;
     self->kappa = 0.638;
 
-    PyObject* sample_set_obj = NULL;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|iIdO", kwlist,
-        &self->verbosity, &self->seed, &self->kappa, &sample_set_obj))
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|iId", kwlist,
+        &self->verbosity, &self->seed, &self->kappa))
     {
-        return;
-    }
-
-    if (sample_set_obj != NULL && parse_sampling_set(self, sample_set_obj)) {
         return;
     }
 
@@ -244,6 +261,8 @@ added with add_clause().\n\
 \n\
 :param cell_count: The number of solutions in a cell.\n\
 :param hash_count: The number of hashes applied to the formula.\n\
+:param sampling_set: (Optional) If provided, the solutions are sampled almost uniformly\n\
+    over the variables in sampling_set.\n\
 :return: A Python list containing a sampled solution."
 );
 
@@ -253,14 +272,19 @@ static PyObject* sample(Sampler *self, PyObject *args, PyObject *kwds)
 
     self->sampled_val = NULL;
 
-    static char* kwlist[] = {"cell_count", "hash_count", NULL};
+    static char* kwlist[] = {"cell_count", "hash_count", "sampling_set", NULL};
 
     auto sol_count = * new ApproxMC::SolCount;
+    PyObject* sample_set_obj = NULL;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "II", kwlist,
-        &sol_count.cellSolCount, &sol_count.hashCount))
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "II|O", kwlist,
+        &sol_count.cellSolCount, &sol_count.hashCount, &sample_set_obj))
     {
         return NULL;
+    }
+
+    if (sample_set_obj != NULL && parse_sampling_set(self, sample_set_obj)) {
+        return;
     }
 
     self->unig->sample(&sol_count, 1);
@@ -309,7 +333,7 @@ static int Sampler_init(Sampler *self, PyObject *args, PyObject *kwds)
     return 0;
 }
 
-static PyTypeObject pyunigen_SamplerType = 
+static PyTypeObject pyunigen_SamplerType =
 {
     PyVarObject_HEAD_INIT(NULL, 0)  /*ob_size*/
     "pyapproxmc.Sampler",           /*tp_name*/
@@ -349,7 +373,7 @@ static PyTypeObject pyunigen_SamplerType =
     (initproc)Sampler_init,         /* tp_init */
 };
 
-PyMODINIT_FUNC PyInit_pyunigen(void) 
+PyMODINIT_FUNC PyInit_pyunigen(void)
 {
     PyObject* m;
 
@@ -373,6 +397,17 @@ PyMODINIT_FUNC PyInit_pyunigen(void)
     };
 
     m = PyModule_Create(&moduledef);
+
+    // Add the version string so users know what version of UniGen
+    // they're using.
+    if (PyModule_AddStringConstant(m, "__version__", UNIGEN_FULL_VERSION) == -1) {
+        Py_DECREF(m);
+        return NULL;
+    }
+    if (PyModule_AddStringConstant(m, "VERSION", UNIGEN_FULL_VERSION) == -1) {
+        Py_DECREF(m);
+        return NULL;
+    }
 
     if (!m) {
         return NULL;
