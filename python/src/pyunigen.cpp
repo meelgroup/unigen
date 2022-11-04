@@ -24,9 +24,9 @@ THE SOFTWARE.
 **********************************/
 
 #include <Python.h>
-#include <unigen/unigen.h>
-#include <approxmc/approxmc.h>
 #include "../cryptominisat/src/cryptominisat.h"
+#include "../approxmc/src/approxmc.h"
+#include "../../src/unigen.h"
 
 #include <limits>
 
@@ -140,7 +140,6 @@ static void setup_sampler(Sampler *self, PyObject *args, PyObject *kwds)
     self->appmc = new ApproxMC::AppMC;
     self->appmc->set_verbosity(self->verbosity);
     self->appmc->set_seed(self->seed);
-    self->appmc->set_projection_set(self->sampling_set);
 
     self->unig = new UniGen::UniG(self->appmc);
     self->unig->set_verbosity(self->verbosity);
@@ -268,15 +267,9 @@ added with add_clause().\n\
 
 static PyObject* sample(Sampler *self, PyObject *args, PyObject *kwds)
 {
-    self->appmc->setup_vars();
+    static char* kwlist[] = {"sampling_set", NULL};
 
-    self->sampled_val = NULL;
-
-    static char* kwlist[] = {"cell_count", "hash_count", "sampling_set", NULL};
-
-    auto sol_count = * new ApproxMC::SolCount;
     PyObject* sample_set_obj = NULL;
-
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "II|O", kwlist,
         &sol_count.cellSolCount, &sol_count.hashCount, &sample_set_obj))
     {
@@ -284,9 +277,13 @@ static PyObject* sample(Sampler *self, PyObject *args, PyObject *kwds)
     }
 
     if (sample_set_obj != NULL && parse_sampling_set(self, sample_set_obj)) {
-        return;
+        return NULL;
+    } else {
+        assert(self->sampling_vars.empty());
+        for(uint32_t i = 0; i < appmc->nVars(); i++) self->sampling_vars.push_back(i);
     }
-
+    self->appmc->set_projection_set(self->sampling_set);
+    auto sol_count = self->appmc->count();
     self->unig->sample(&sol_count, 1);
 
     if (self->sampled_val == NULL) {
