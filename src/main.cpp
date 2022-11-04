@@ -36,7 +36,7 @@ using std::vector;
 #endif
 
 #include "config.h"
-#include "unigen/unigen.h"
+#include "unigen.h"
 #include "time_mem.h"
 #include <approxmc/approxmc.h>
 #include <fstream>

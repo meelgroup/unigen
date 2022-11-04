@@ -27,7 +27,6 @@
  */
 
 #include "sampler.h"
-#include "unigen/unigen.h"
 #include <approxmc/approxmc.h>
 #include "config.h"
 #include <iostream>

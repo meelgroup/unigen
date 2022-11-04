@@ -42,7 +42,7 @@ Sampler
 #include <cryptominisat5/cryptominisat.h>
 #endif
 #include <approxmc/approxmc.h>
-#include "unigen/unigen.h"
+#include "unigen.h"
 #include "config.h"
 
 using std::string;
