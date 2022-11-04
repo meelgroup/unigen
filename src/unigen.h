@@ -34,8 +34,11 @@
 #include <vector>
 #include <fstream>
 #include <functional>
+#ifdef CMS_LOCAL_BUILD
+#include "cryptominisat.h"
+#else
 #include <cryptominisat5/cryptominisat.h>
-#include <cryptominisat5/solvertypesmini.h>
+#endif
 
 namespace ApproxMC {
     class AppMC;

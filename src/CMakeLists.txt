@@ -59,7 +59,6 @@ include_directories(${APPROXMC_INCLUDE_DIRS})
 include_directories(${GMP_INCLUDE_DIRS})
 include_directories(${ARJUN_INCLUDE_DIRS})
 
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/unigen.h.in" "${CMAKE_CURRENT_BINARY_DIR}/unigen/unigen.h" @ONLY)
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GitSHA1.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp" @ONLY)
 
 set(unigen_lib_files
@@ -84,7 +83,7 @@ set_target_properties(unigen PROPERTIES
     SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
 )
 
-unigen_add_public_header(unigen ${CMAKE_CURRENT_BINARY_DIR}/unigen/unigen.h )
+unigen_add_public_header(unigen ${CMAKE_CURRENT_SOURCE_DIR}/unigen.h )
 
 # -----------------------------------------------------------------------------
 # Copy public headers into build directory include directory.

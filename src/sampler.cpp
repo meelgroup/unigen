@@ -45,8 +45,6 @@
 #include <complex>
 
 #include "time_mem.h"
-#include "cryptominisat5/cryptominisat.h"
-#include "cryptominisat5/solvertypesmini.h"
 #include "GitSHA1.h"
 #include "sampler.h"
 

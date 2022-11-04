@@ -36,7 +36,11 @@ Sampler
 #include <map>
 #include <cstdint>
 #include <mutex>
+#ifdef CMS_LOCAL_BUILD
+#include "cryptominisat.h"
+#else
 #include <cryptominisat5/cryptominisat.h>
+#endif
 #include <approxmc/approxmc.h>
 #include "unigen/unigen.h"
 #include "config.h"

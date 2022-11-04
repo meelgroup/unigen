@@ -26,7 +26,7 @@ THE SOFTWARE.
 #include <Python.h>
 #include <unigen/unigen.h>
 #include <approxmc/approxmc.h>
-#include <cryptominisat5/cryptominisat.h>
+#include "../cryptominisat/src/cryptominisat.h"
 
 #include <limits>
 
