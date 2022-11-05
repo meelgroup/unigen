@@ -38,10 +38,11 @@ Sampler
 #include <mutex>
 #ifdef CMS_LOCAL_BUILD
 #include "cryptominisat.h"
+#include "approxmc.h"
 #else
 #include <cryptominisat5/cryptominisat.h>
-#endif
 #include <approxmc/approxmc.h>
+#endif
 #include "unigen.h"
 #include "config.h"
 

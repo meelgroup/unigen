@@ -258,11 +258,11 @@ PyDoc_STRVAR(sample_doc,
 Sample almost uniformly from the solutions for the clauses that have been \n\
 added with add_clause().\n\
 \n\
-:param cell_count: The number of solutions in a cell.\n\
-:param hash_count: The number of hashes applied to the formula.\n\
 :param sampling_set: (Optional) If provided, the solutions are sampled almost uniformly\n\
     over the variables in sampling_set.\n\
-:return: A Python list containing a sampled solution."
+:return: The Python tuple (cell count, hash count, list of samples)\n\
+    where the first two elements are from ApproxMC's count, and the last\n\
+    element is a list of samples"
 );
 
 static PyObject* sample(Sampler *self, PyObject *args, PyObject *kwds)
@@ -270,27 +270,40 @@ static PyObject* sample(Sampler *self, PyObject *args, PyObject *kwds)
     static char* kwlist[] = {"sampling_set", NULL};
 
     PyObject* sample_set_obj = NULL;
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "II|O", kwlist,
-        &sol_count.cellSolCount, &sol_count.hashCount, &sample_set_obj))
+    int num_samples = 1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|IO", kwlist, &num_samples, &sample_set_obj))
     {
         return NULL;
     }
 
     if (sample_set_obj != NULL && parse_sampling_set(self, sample_set_obj)) {
         return NULL;
-    } else {
-        assert(self->sampling_vars.empty());
-        for(uint32_t i = 0; i < appmc->nVars(); i++) self->sampling_vars.push_back(i);
     }
+
+    if (sample_set_obj == NULL) {
+        assert(self->sampling_set.empty());
+        for(uint32_t i = 0; i < self->appmc->nVars(); i++) self->sampling_set.push_back(i);
+    }
+
     self->appmc->set_projection_set(self->sampling_set);
     auto sol_count = self->appmc->count();
-    self->unig->sample(&sol_count, 1);
+    self->unig->sample(&sol_count, num_samples);
+    //if (self->sampled_val == NULL) return NULL;
 
-    if (self->sampled_val == NULL) {
+    PyObject *result = PyTuple_New((Py_ssize_t) 3);
+    if (result == NULL) {
+        PyErr_SetString(PyExc_SystemError, "failed to create a tuple");
         return NULL;
     }
+    PyTuple_SET_ITEM(result, 0, PyLong_FromLong((long)sol_count.cellSolCount));
+    PyTuple_SET_ITEM(result, 1, PyLong_FromLong((long)sol_count.hashCount));
+    if (self->sampled_val == NULL) {
+        PyTuple_SET_ITEM(result, 1, Py_None);
+    } else {
+        PyTuple_SET_ITEM(result, 1, self->sampled_val);
+    }
 
-    return self->sampled_val;
+    return result;
 }
 
 /********** Python Bindings **********/

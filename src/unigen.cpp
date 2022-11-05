@@ -27,7 +27,6 @@
  */
 
 #include "sampler.h"
-#include <approxmc/approxmc.h>
 #include "config.h"
 #include <iostream>
 #include <fstream>

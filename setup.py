@@ -60,6 +60,7 @@ def gen_modules(version):
                    "python/approxmc/src/approxmc.cpp",
                    "python/approxmc/src/constants.cpp",
                    "python/approxmc/src/counter.cpp",
+                   "python/approxmc/python/src/GitSHA1.cpp",
                    "python/cryptominisat/python/src/GitSHA1.cpp",
                    "python/cryptominisat/src/bva.cpp",
                    "python/cryptominisat/src/cardfinder.cpp",
