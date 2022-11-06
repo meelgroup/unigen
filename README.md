@@ -5,25 +5,21 @@
 # UniGen3: Almost-Uniform Sampler
 UniGen3 is the state of the art almost-uniform sampler  utilizing an improved version of CryptoMiniSat to handle problems of size and complexity that were not possible before. The current version is based on work Mate Soos, Stephan Gocht, and Kuldeep S. Meel, as [published in CAV-20](http://comp.nus.edu.sg/~meel/Papers/cav20-sgm.pdf). Please see below for credits.  A large part of the work is in CryptoMiniSat [here](https://github.com/msoos/cryptominisat).
 
+## How to use the Python package
 
-
-## Docker image
-If you don't have or don't know what an independent set is, first run our MIS tool:
 ```
-docker run --rm -v `pwd`/formula.cnf:/in msoos/mis --timeout 300 /in
-[...]
-** Copy-paste the following line in the top of your CNF for UniGen **
-c ind 3 4 7 8 10 11 14 17 18 26 30 35 36 39 42 47 60 62 67 0
-```
-Then copy-paste that line into your CNF.
-
-Then run the updated CNF through unigen:
-```
-cat formula.cnf | docker run --rm -i -a stdin -a stdout msoos/unigen
+pip install pyunigen
+python
+>>> from pyunigen import Sampler
+>>> c = Sampler()
+>>> c.add_clause([1, 5])
+>>> c.add_clause([10, 11, 12])
+>>> cells, hashes, samples = c.sample(num=2, sampling_set=range(1,5))
+>>> print("There are approx. ", cells*2**hashes, " solutions over the sampling set. Samples: ", samples)
+There are approx. 16  solutions over the sampling set. Samples:  [[1, -2, 3, -4], [1, 2, -3, -4]]
 ```
 
-## How to Build
-To build on Linux:
+## How to Build and Use on Linux:
 
 ```
 sudo apt-get install build-essential cmake
