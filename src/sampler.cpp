@@ -301,7 +301,7 @@ void Sampler::sample(
     }
 
     /* Compute threshold via formula from TACAS-15 paper */
-    threshold_Samplergen = ceil(4.03 * (1 + (1/conf.kappa)) * (1 + (1/conf.kappa)));
+    threshold_Samplergen = ceil(4.03 * (1 + (1/conf.epsilon)) * (1 + (1/conf.epsilon)));
 
     //No startiter, we have to figure it out
     assert(conf.startiter == 0);
@@ -370,8 +370,8 @@ void Sampler::generate_samples(const uint32_t num_samples_needed)
 {
     double genStartTime = cpuTimeTotal();
 
-    hiThresh = ceil(1 + (1.4142136 * (1 + conf.kappa) * threshold_Samplergen));
-    loThresh = floor(threshold_Samplergen / (1.4142136 * (1 + conf.kappa)));
+    hiThresh = ceil(1 + (1.4142136 * (1 + conf.epsilon) * threshold_Samplergen));
+    loThresh = floor(threshold_Samplergen / (1.4142136 * (1 + conf.epsilon)));
     const uint32_t samplesPerCall = sols_to_return(num_samples_needed);
     const uint32_t callsNeeded =
         num_samples_needed / samplesPerCall + (bool)(num_samples_needed % samplesPerCall);

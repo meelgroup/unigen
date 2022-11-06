@@ -33,56 +33,66 @@ THE SOFTWARE.
 #define MODULE_NAME "pyunigen"
 #define MODULE_DOC "Unigen almost uniform sampler."
 
-typedef struct {
+struct Sampler {
     PyObject_HEAD
     UniGen::UniG* unig;
+    PyObject* sample_list = NULL;
     ApproxMC::AppMC* appmc;
-    std::vector<CMSat::Lit> tmp_cl_lits;
-    PyObject* sampled_val;
 
-    int verbosity;
-    uint32_t seed;
-    double kappa;
+    // config
+    int verbosity = 0;
+    uint32_t seed = 1;
+    double epsilon;
+    double delta;
+    bool multisample = false;
+
+    // internal
+    std::vector<CMSat::Lit> tmp_cl_lits;
     std::vector<uint32_t> sampling_set;
-} Sampler;
+    bool called_already = false;
+    uint32_t samples_needed = 5;
+    uint32_t samples_generated = 0;
+};
 
 static const char sampler_create_docstring[] = \
-"Sampler(verbosity=0, seed=1, kappa=0.638)\n\
+"Sampler(verbosity=0, seed=1, epsilon=0.638)\n\
 Create Sampler object.\n\
 \n\
 :param verbosity: Verbosity level: 0: nothing printed; 15: very verbose.\n\
 :param seed: Random seed\n\
-:param kappa: Uniformity parameter (see TACAS-15 paper)\n\
+:param epsilon: Uniformity parameter (see TACAS-15 paper)\n\
 ";
 
 /********** Internal Functions **********/
 
 /* Helper functions */
 
-void pybinding_callback(const std::vector<int>& solution, void *source)
+void pybinding_callback(const std::vector<int>& solution, void *self_in)
 {
-    PyObject** py_obj_cont = (PyObject**) source;
+    Sampler* self = (Sampler*) self_in;
+    if (self->samples_generated >= self->samples_needed) return;
 
-    PyObject* py_list = PyList_New(solution.size());
-    if (py_list == NULL) {
+    PyObject* sample = PyList_New(solution.size());
+    if (sample == NULL) {
         PyErr_SetString(PyExc_SystemError, "failed to create a list");
         return;
     }
+
     for (unsigned int i = 0; i < solution.size(); i++) {
         PyObject *lit = PyLong_FromLong((long)solution[i]);
         if (lit == NULL) {
             PyErr_SetString(PyExc_SystemError, "failed to create a list");
             return;
         }
-        PyList_SET_ITEM(py_list, i, lit);
+        PyList_SET_ITEM(sample, i, lit);
     }
-
-    (*py_obj_cont) = py_list;
+    PyList_Append(self->sample_list, sample);
+    self->samples_generated++;
 }
 
-static int parse_sampling_set(Sampler *self, PyObject *sample_set_obj)
+static int parse_sampling_set(Sampler *self, PyObject *sampling_set_obj)
 {
-    PyObject *iterator = PyObject_GetIter(sample_set_obj);
+    PyObject *iterator = PyObject_GetIter(sampling_set_obj);
     if (iterator == NULL) {
         PyErr_SetString(PyExc_TypeError, "iterable object expected");
         return 1;
@@ -113,17 +123,20 @@ static int parse_sampling_set(Sampler *self, PyObject *sample_set_obj)
 
 static void setup_sampler(Sampler *self, PyObject *args, PyObject *kwds)
 {
-    static char* kwlist[] = {"verbosity", "seed", "kappa", NULL};
-
-    // All parameters have the same default as the command line defaults
-    // except for verbosity which is 0 by default.
     self->verbosity = 0;
     self->seed = 1;
-    self->kappa = 0.638;
+    self->multisample = false;
+    self->called_already = false;
+    self->samples_needed = 5;
+    self->samples_generated = 0;
+    self->appmc = new ApproxMC::AppMC;
+    self->unig = new UniGen::UniG(self->appmc);
+    self->epsilon = self->unig->get_epsilon();
+    self->delta = self->appmc->get_epsilon();
 
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|iId", kwlist,
-        &self->verbosity, &self->seed, &self->kappa))
+    static char* kwlist[] = {"verbosity", "seed", "epsilon", "delta", "multisample", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|iIddp", kwlist,
+        &self->verbosity, &self->seed, &self->epsilon, &self->delta, &self->multisample))
     {
         return;
     }
@@ -132,23 +145,25 @@ static void setup_sampler(Sampler *self, PyObject *args, PyObject *kwds)
         PyErr_SetString(PyExc_ValueError, "verbosity must be at least 0");
         return;
     }
-    if (self->kappa <= 0 || self->kappa >= 1) {
+    if (self->epsilon <= 0 || self->epsilon >= 1) {
         PyErr_SetString(PyExc_ValueError, "epsilon must be greater than 0");
         return;
     }
+    if (self->delta <= 0 || self->delta >= 1) {
+        PyErr_SetString(PyExc_ValueError, "delta must be greater than 0");
+        return;
+    }
 
-    self->appmc = new ApproxMC::AppMC;
     self->appmc->set_verbosity(self->verbosity);
     self->appmc->set_seed(self->seed);
+    self->appmc->set_epsilon(self->epsilon);
+    self->appmc->set_delta(self->delta);
 
-    self->unig = new UniGen::UniG(self->appmc);
     self->unig->set_verbosity(self->verbosity);
-    self->unig->set_kappa(self->kappa);
-    // Only one sample generated and
-    // multisample disabled for simplicity
-    self->unig->set_multisample(false);
+    self->unig->set_epsilon(self->epsilon);
+    self->unig->set_multisample(self->multisample);
 
-    self->unig->set_callback(pybinding_callback, &self->sampled_val);
+    self->unig->set_callback(pybinding_callback, self);
 
     return;
 }
@@ -267,28 +282,38 @@ added with add_clause().\n\
 
 static PyObject* sample(Sampler *self, PyObject *args, PyObject *kwds)
 {
-    static char* kwlist[] = {"sampling_set", NULL};
+    if (self->called_already) {
+        PyErr_SetString(PyExc_SystemError, "You can only call sample() once");
+        return NULL;
+    }
+    self->called_already = true;
 
-    PyObject* sample_set_obj = NULL;
-    int num_samples = 1;
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|IO", kwlist, &num_samples, &sample_set_obj))
+    static char* kwlist[] = {"num", "sampling_set", NULL};
+
+    self->sample_list = PyList_New(0);
+    if (self->sample_list == NULL) {
+        PyErr_SetString(PyExc_SystemError, "failed to create a list");
+        return NULL;
+    }
+
+    PyObject* sampling_set_obj = NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|IO", kwlist, &self->samples_needed, &sampling_set_obj))
     {
         return NULL;
     }
 
-    if (sample_set_obj != NULL && parse_sampling_set(self, sample_set_obj)) {
+    if (sampling_set_obj != NULL && parse_sampling_set(self, sampling_set_obj)) {
         return NULL;
     }
 
-    if (sample_set_obj == NULL) {
+    if (sampling_set_obj == NULL) {
         assert(self->sampling_set.empty());
         for(uint32_t i = 0; i < self->appmc->nVars(); i++) self->sampling_set.push_back(i);
     }
 
     self->appmc->set_projection_set(self->sampling_set);
     auto sol_count = self->appmc->count();
-    self->unig->sample(&sol_count, num_samples);
-    //if (self->sampled_val == NULL) return NULL;
+    self->unig->sample(&sol_count, self->samples_needed);
 
     PyObject *result = PyTuple_New((Py_ssize_t) 3);
     if (result == NULL) {
@@ -297,11 +322,7 @@ static PyObject* sample(Sampler *self, PyObject *args, PyObject *kwds)
     }
     PyTuple_SET_ITEM(result, 0, PyLong_FromLong((long)sol_count.cellSolCount));
     PyTuple_SET_ITEM(result, 1, PyLong_FromLong((long)sol_count.hashCount));
-    if (self->sampled_val == NULL) {
-        PyTuple_SET_ITEM(result, 1, Py_None);
-    } else {
-        PyTuple_SET_ITEM(result, 1, self->sampled_val);
-    }
+    PyTuple_SET_ITEM(result, 2, self->sample_list);
 
     return result;
 }

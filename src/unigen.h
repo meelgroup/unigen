@@ -65,7 +65,7 @@ public:
         uint32_t num_samples);
 
     //Misc options -- do NOT to change unless you know what you are doing!
-    void set_kappa(double kappa);
+    void set_epsilon(double epsilon);
     void set_multisample(bool multisample);
     void set_only_indep_samples(bool only_indep_samples);
     void set_verb_banning_cls(bool verb_sampler_cls);
@@ -75,7 +75,7 @@ public:
     void set_callback(UniGen::callback f, void* data);
 
     //Querying default values
-    double get_kappa();
+    double get_epsilon();
     bool get_multisample();
     bool get_only_indep_samples();
     bool get_verb_sampler_cls();
