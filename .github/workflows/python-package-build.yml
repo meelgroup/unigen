@@ -28,6 +28,11 @@ jobs:
       with:
         repository: meelgroup/arjun
         path: python/arjun
+    - name: Checkout AppMC
+      uses: actions/checkout@v2
+      with:
+        repository: meelgroup/approxmc
+        path: python/approxmc
 #    - name: Lint with flake8 for syntax errors
 #      run: |
 #        pip install flake8
