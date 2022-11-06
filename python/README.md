@@ -4,39 +4,37 @@ This directory provides Python bindings to UniGen on the C++ level,
 i.e. when importing pycryptosat, the CryptoMiniSat solver becomes part of the
 Python process itself.
 
-## Compiling
-The pyunigen python package compiles separately from ApproxMC, the binary.
+## Installing
 
-In order to compile, install the python developer tools:
+```
+pip install pyunigen
+```
+
+## Compiling
+If you don't want to use the pip package, you can compile it as:
 
 ```
 apt-get install python-dev
-```
-
-Then:
-
-```
 cd python
 git clone https://github.com/msoos/cryptominisat
 git clone https://github.com/meelgroup/arjun
 git clone https://github.com/meelgroup/approxmc
 cd ..
 python -m build
-
-You will then find the files under "dist/".
 ```
+You will then find the files under "dist/".
 
 ## Usage
 
-The ``pyunigen`` module has one object, ``Sampler`` that has two functions
-``sample`` and ``add_clause``.
+The `pyunigen` module has one object, `Sampler` that has two functions
+`sample` and `add_clause`.
 
-The funcion ``add_clause()`` takes an iterable list of literals such as
-``[1, 2]`` which represents the truth ``1 or 2 = True``. For example,
-``add_clause([1])`` sets variable ``1`` to ``True``.
+The funcion `add_clause()` takes an iterable list of literals such as
+`[1, 2]` which represents the truth `1 or 2 = True`. For example,
+`add_clause([1])` sets variable `1` to `True`.
 
-The function ``sample()`` samples the system of equations that have been added
-with ``add_clause()``:
+The function `sample()` samples the system of equations that have been added
+with `add_clause()`:
 
 ```
 >>> from pyunigen import Sampler

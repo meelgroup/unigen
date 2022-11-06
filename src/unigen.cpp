@@ -87,9 +87,9 @@ DLL_PUBLIC string UniG::get_version_info()
     return data->sampler.get_version_info();
 }
 
-DLL_PUBLIC double UniG::get_epsilon()
+DLL_PUBLIC double UniG::get_kappa()
 {
-    return data->conf.epsilon;
+    return data->conf.kappa;
 }
 
 DLL_PUBLIC bool UniG::get_multisample()
@@ -107,9 +107,9 @@ DLL_PUBLIC bool UniG::get_verb_sampler_cls()
     return data->conf.verb_banning_cls;
 }
 
-DLL_PUBLIC void UniG::set_epsilon(double epsilon)
+DLL_PUBLIC void UniG::set_kappa(double kappa)
 {
-    data->conf.epsilon = epsilon;
+    data->conf.kappa = kappa;
 }
 
 DLL_PUBLIC void UniG::set_multisample(bool multisample)

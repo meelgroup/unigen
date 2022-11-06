@@ -39,7 +39,7 @@ struct Config {
     bool only_indep_samples = true;
     uint32_t multisample = 1;
     int force_sol_extension = 0;
-    double epsilon = 0.638;  /* Corresponds to UniGen's epsilon=16 in the TACAS-15 paper */
+    double kappa = 0.638;  /* Corresponds to UniGen's epsilon=16 in the TACAS-15 paper */
     std::ostream* logfile = NULL;
 };
 

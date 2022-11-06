@@ -42,6 +42,7 @@ struct Sampler {
     // config
     int verbosity = 0;
     uint32_t seed = 1;
+    double kappa;
     double epsilon;
     double delta;
     bool multisample = false;
@@ -55,12 +56,14 @@ struct Sampler {
 };
 
 static const char sampler_create_docstring[] = \
-"Sampler(verbosity=0, seed=1, epsilon=0.638)\n\
+"Sampler(verbosity=0, seed=1)\n\
 Create Sampler object.\n\
 \n\
 :param verbosity: Verbosity level: 0: nothing printed; 15: very verbose.\n\
 :param seed: Random seed\n\
-:param epsilon: Uniformity parameter (see TACAS-15 paper)\n\
+:param delta: \n\
+:param epsilon: \n\
+:param kappa: Uniformity parameter (see TACAS-15 paper)\n\
 ";
 
 /********** Internal Functions **********/
@@ -131,12 +134,13 @@ static void setup_sampler(Sampler *self, PyObject *args, PyObject *kwds)
     self->samples_generated = 0;
     self->appmc = new ApproxMC::AppMC;
     self->unig = new UniGen::UniG(self->appmc);
-    self->epsilon = self->unig->get_epsilon();
-    self->delta = self->appmc->get_epsilon();
+    self->epsilon = self->appmc->get_epsilon();
+    self->delta = self->appmc->get_delta();
+    self->kappa = self->unig->get_kappa();
 
-    static char* kwlist[] = {"verbosity", "seed", "epsilon", "delta", "multisample", NULL};
+    static char* kwlist[] = {"verbosity", "seed", "epsilon", "delta", "kappa", "multisample", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|iIddp", kwlist,
-        &self->verbosity, &self->seed, &self->epsilon, &self->delta, &self->multisample))
+        &self->verbosity, &self->seed, &self->epsilon, &self->delta, &self->kappa, &self->multisample))
     {
         return;
     }
@@ -154,13 +158,18 @@ static void setup_sampler(Sampler *self, PyObject *args, PyObject *kwds)
         return;
     }
 
+    if (self->kappa <= 0 || self->kappa >= 1) {
+        PyErr_SetString(PyExc_ValueError, "kappa must be greater than 0");
+        return;
+    }
+
     self->appmc->set_verbosity(self->verbosity);
     self->appmc->set_seed(self->seed);
     self->appmc->set_epsilon(self->epsilon);
     self->appmc->set_delta(self->delta);
 
     self->unig->set_verbosity(self->verbosity);
-    self->unig->set_epsilon(self->epsilon);
+    self->unig->set_kappa(self->kappa);
     self->unig->set_multisample(self->multisample);
 
     self->unig->set_callback(pybinding_callback, self);

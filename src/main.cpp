@@ -90,7 +90,7 @@ uint32_t num_samples = 500;
 int only_indep_samples ;
 int multisample;
 std::string sample_fname;
-double kappa;      /* Corresponds to epsilon=16 */
+double kappa;
 bool verb_sampler_cls ;
 
 //signal code
