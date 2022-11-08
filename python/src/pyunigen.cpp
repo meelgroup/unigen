@@ -139,7 +139,7 @@ static void setup_sampler(Sampler *self, PyObject *args, PyObject *kwds)
     self->kappa = self->unig->get_kappa();
 
     static char* kwlist[] = {"verbosity", "seed", "epsilon", "delta", "kappa", "multisample", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|iIddp", kwlist,
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|iIdddp", kwlist,
         &self->verbosity, &self->seed, &self->epsilon, &self->delta, &self->kappa, &self->multisample))
     {
         return;
@@ -284,6 +284,10 @@ added with add_clause().\n\
 \n\
 :param sampling_set: (Optional) If provided, the solutions are sampled almost uniformly\n\
     over the variables in sampling_set.\n\
+:param hash_count: (Optional) If both hash_count and cell_count are provided, they are used instead of\n\
+    calling ApproxMC internally.\n\
+:param cell_count: (Optional) If both hash_count and cell_count are provided, they are used instead of\n\
+    calling ApproxMC internally.\n\
 :return: The Python tuple (cell count, hash count, list of samples)\n\
     where the first two elements are from ApproxMC's count, and the last\n\
     element is a list of samples"
@@ -297,7 +301,7 @@ static PyObject* sample(Sampler *self, PyObject *args, PyObject *kwds)
     }
     self->called_already = true;
 
-    static char* kwlist[] = {"num", "sampling_set", NULL};
+    static char* kwlist[] = {"num", "sampling_set", "hash_count", "cell_count", NULL};
 
     self->sample_list = PyList_New(0);
     if (self->sample_list == NULL) {
@@ -306,7 +310,10 @@ static PyObject* sample(Sampler *self, PyObject *args, PyObject *kwds)
     }
 
     PyObject* sampling_set_obj = NULL;
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|IO", kwlist, &self->samples_needed, &sampling_set_obj))
+    int hash_count = NULL;
+    int cell_count = NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|IOII", kwlist, 
+    	&self->samples_needed, &sampling_set_obj, &hash_count, &cell_count))
     {
         return NULL;
     }
@@ -321,7 +328,15 @@ static PyObject* sample(Sampler *self, PyObject *args, PyObject *kwds)
     }
 
     self->appmc->set_projection_set(self->sampling_set);
-    auto sol_count = self->appmc->count();
+    
+    auto sol_count = * new ApproxMC::SolCount;
+    if (hash_count != NULL && cell_count != NULL) {
+    	sol_count.hashCount = hash_count;
+    	sol_count.cellSolCount = cell_count;
+    } else {
+    	sol_count = self->appmc->count();
+    }
+    
     self->unig->sample(&sol_count, self->samples_needed);
 
     PyObject *result = PyTuple_New((Py_ssize_t) 3);
