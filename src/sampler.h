@@ -30,12 +30,10 @@ Sampler
 #ifndef Sampler_H_
 #define Sampler_H_
 
-#include <gmp.h>
 #include <fstream>
 #include <random>
 #include <map>
 #include <cstdint>
-#include <mutex>
 #ifdef CMS_LOCAL_BUILD
 #include "cryptominisat.h"
 #include "approxmc.h"
