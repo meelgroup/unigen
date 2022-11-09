@@ -75,25 +75,26 @@ def test():
 
     # Sample solutions and check that they are valid
     for i in range(1000):
+        if i % 100 == 99:
+            print("Running test %d" % i)
         # Initialize sampler
         sampler = Sampler(seed=i)
         for clause in clauses:
             sampler.add_clause(clause)
         
         # Generate and extract a sample
-        raw_sample = sampler.sample(num=1,sampling_set=sampling_set, cell_count=cell_count, hash_count=hash_count)
+        raw_sample = sampler.sample(num=1,sampling_set=sampling_set, cell_hash_count=(cell_count, hash_count))
         sample = raw_sample[2][0]
 
         # Add sampled values as clauses and check that the formula is still satisfiable
         solver = Solver()
-
         for clause in clauses:
             solver.add_clause(clause)
-
-        for var in sample:
-            solver.add_clause([var])
-        
-        assert solver.solve()[0], sample
+        for lit in sample:
+            solver.add_clause([lit])
+        if solver.solve()[0] == False:
+            print("Sample is incorrect: ", sample)
+            assert False
 
 if __name__ == '__main__':
     test()
