@@ -98,30 +98,29 @@ static int parse_sampling_set(Sampler *self, PyObject *sampling_set_obj)
     PyObject *iterator = PyObject_GetIter(sampling_set_obj);
     if (iterator == NULL) {
         PyErr_SetString(PyExc_TypeError, "iterable object expected");
-        return 1;
+        return NULL;
     }
 
     PyObject *lit;
     while ((lit = PyIter_Next(iterator)) != NULL) {
         long val = PyLong_AsLong(lit);
-        if (val == 0) {
-            PyErr_SetString(PyExc_ValueError, "non-zero integer expected");
-            return 1;
+        if (val <= 0) {
+            PyErr_SetString(PyExc_ValueError, "Sampling set must be positive numbers");
+            return NULL;
         }
         if (val > std::numeric_limits<int>::max()/2
             || val < std::numeric_limits<int>::min()/2
         ) {
             PyErr_Format(PyExc_ValueError, "integer %ld is too small or too large", val);
-            return 1;
+            return NULL;
         }
 
-        long var = val - 1;
-        self->sampling_set.push_back(var);
+        self->sampling_set.push_back(val - 1);
         Py_DECREF(lit);
     }
     Py_DECREF(iterator);
 
-    return 0;
+    return 1;
 }
 
 static void setup_sampler(Sampler *self, PyObject *args, PyObject *kwds)
@@ -311,7 +310,7 @@ static PyObject* sample(Sampler *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    if (sampling_set_obj != NULL && parse_sampling_set(self, sampling_set_obj)) {
+    if (sampling_set_obj != NULL && !parse_sampling_set(self, sampling_set_obj)) {
         return NULL;
     }
 
