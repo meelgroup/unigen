@@ -26,7 +26,6 @@
  */
 
 #include <boost/program_options.hpp>
-using boost::lexical_cast;
 namespace po = boost::program_options;
 using std::string;
 using std::vector;
@@ -82,8 +81,6 @@ bool sampling_vars_found = false;
 int ignore_sampl_set = 0;
 int do_arjun = 1;
 int debug_arjun = 0;
-int arjun_incidence_sort;
-int do_empty_occ = 1;
 
 //sampling
 uint32_t num_samples = 500;
@@ -140,18 +137,12 @@ void add_UniGen_options()
         , "delta parameter as per PAC guarantees; 1-delta is the confidence")
     ("log", po::value(&logfilename),
          "Logs of ApproxMC execution")
-    ("emptyocc", po::value(&do_empty_occ)->default_value(do_empty_occ),
-         "Use empty occ")
     ;
 
     ArjunNS::Arjun tmpa;
-    arjun_incidence_sort = tmpa.get_incidence_sort();
-
     arjun_options.add_options()
     ("arjun", po::value(&do_arjun)->default_value(do_arjun)
         , "Use arjun to minimize sampling set")
-    ("arjuninc", po::value(&arjun_incidence_sort)->default_value(arjun_incidence_sort)
-        , "Select incidence sorting. Probe-based is 3. Simple incidence-based is 1. Component-to-other-component based is 5. Random is 5")
     ("debugarjun", po::value(&debug_arjun)->default_value(debug_arjun)
         , "Use CNF from Arjun, but use sampling set from CNF")
     ;
@@ -506,7 +497,6 @@ int main(int argc, char** argv)
         }
     }
 
-
     //Main options
     appmc->set_verbosity(verbosity);
     if (verbosity) {
@@ -536,7 +526,6 @@ int main(int argc, char** argv)
         arjun = new ArjunNS::Arjun;
         arjun->set_seed(seed);
         arjun->set_verbosity(verbosity);
-        arjun->set_incidence_sort(arjun_incidence_sort);
         if (verbosity) {
             cout << "c Arjun SHA revision " <<  arjun->get_version_info() << endl;
         }
@@ -547,39 +536,23 @@ int main(int argc, char** argv)
         print_orig_sampling_vars(sampling_vars_orig);
         get_cnf_from_arjun();
         sampling_vars = arjun->get_indep_set();
-        empty_occ_sampl_vars = arjun->get_empty_occ_sampl_vars();
         print_final_indep_set(sampling_vars , sampling_vars_orig.size());
         if (debug_arjun) {
             sampling_vars = sampling_vars_orig;
-            empty_occ_sampl_vars.clear();
         }
         delete arjun;
     } else {
         read_input_cnf(appmc);
         if (!sampling_vars_found || ignore_sampl_set) {
             sampling_vars.clear();
-            for(uint32_t i = 0; i < appmc->nVars(); i++) {
-                sampling_vars.push_back(i);
-            }
+            for(uint32_t i = 0; i < appmc->nVars(); i++) sampling_vars.push_back(i);
         }
         sampling_vars_orig = sampling_vars;
         //print_orig_sampling_vars(sampling_vars, appmc);
     }
 
-    if (do_empty_occ) {
-        std::set<uint32_t> sampl_vars_set;
-        sampl_vars_set.insert(sampling_vars.begin(), sampling_vars.end());
-        for(auto const& v: empty_occ_sampl_vars) {
-            assert(sampl_vars_set.find(v) != sampl_vars_set.end()); // this is guaranteed by arjun
-            sampl_vars_set.erase(v);
-        }
-        sampling_vars.clear();
-        sampling_vars.insert(sampling_vars.end(), sampl_vars_set.begin(), sampl_vars_set.end());
-    }
-
     appmc->set_projection_set(sampling_vars);
     auto sol_count = appmc->count();
-    if (do_empty_occ) sol_count.hashCount += empty_occ_sampl_vars.size();
 
     appmc->set_projection_set(sampling_vars_orig);
     unigen->set_verbosity(verbosity);
