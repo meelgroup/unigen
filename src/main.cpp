@@ -461,6 +461,15 @@ void print_final_indep_set(const vector<uint32_t>& indep_set, uint32_t orig_samp
     << " %" << endl << std::flush;
 }
 
+template <class T>
+void check_sanity_sampling_vars(T vars, const uint32_t nvars)
+{
+    for(const auto& v: vars) if (v >= nvars) {
+        cout << "ERROR: sampling set provided is incorrect, it has a variable in it: " << v+1 << " that is larger than the total number of variables: " << nvars << endl;
+        exit(-1);
+    }
+}
+
 int main(int argc, char** argv)
 {
     #if defined(__GNUC__) && defined(__linux__)
@@ -546,6 +555,7 @@ int main(int argc, char** argv)
     }
 
     appmc->set_projection_set(sampling_vars);
+    check_sanity_sampling_vars(sampling_vars, appmc->nVars());
     auto sol_count = appmc->count();
 
     appmc->set_projection_set(sampling_vars_orig);
