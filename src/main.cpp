@@ -212,6 +212,10 @@ void add_supported_options(int argc, char** argv)
             ApproxMC::AppMC tmp;
             UniG tmp2(&tmp);
             cout << tmp2.get_version_info();
+            ArjunNS::Arjun tmp3;
+            cout << "c Arjun Version: "
+            << tmp3.get_version_info() << endl;
+            cout << tmp3.get_solver_version_info();
             std::exit(0);
         }
 
