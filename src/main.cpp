@@ -391,9 +391,7 @@ void read_input_cnf(T* reader)
 void print_orig_sampling_vars(const vector<uint32_t>& orig_sampling_vars)
 {
     cout << "c [unig] Original sampling vars: ";
-    for(auto v: orig_sampling_vars) {
-        cout << v << " ";
-    }
+    for(auto v: orig_sampling_vars) cout << v << " ";
     cout << endl;
     cout << "c [unig] Orig sampling vars size: " << orig_sampling_vars.size() << endl;
 }
@@ -452,9 +450,7 @@ inline double stats_line_percent(double num, double total)
 void print_final_indep_set(const vector<uint32_t>& indep_set, uint32_t orig_sampling_set_size)
 {
     cout << "c [arjun] final indep set: ";
-    for(const uint32_t s: indep_set) {
-        cout << s+1 << " ";
-    }
+    for(const uint32_t s: indep_set) cout << s+1 << " ";
     cout << "0" << endl;
 
     cout << "c [arjun] final set size: " << std::setw(8)
@@ -522,7 +518,6 @@ int main(int argc, char** argv)
     vector<uint32_t> empty_occ_sampl_vars;
     vector<uint32_t> sampling_vars_orig;
     if (do_arjun) {
-        //Arjun-based minimization
         arjun = new ArjunNS::Arjun;
         arjun->set_seed(seed);
         arjun->set_verbosity(verbosity);
@@ -533,13 +528,12 @@ int main(int argc, char** argv)
         read_input_cnf(arjun);
         set_up_sampling_set();
         sampling_vars_orig = sampling_vars;
+        check_sanity_sampling_vars(sampling_vars, arjun->get_orig_num_vars());
         print_orig_sampling_vars(sampling_vars_orig);
         get_cnf_from_arjun();
         sampling_vars = arjun->get_indep_set();
         print_final_indep_set(sampling_vars , sampling_vars_orig.size());
-        if (debug_arjun) {
-            sampling_vars = sampling_vars_orig;
-        }
+        if (debug_arjun) sampling_vars = sampling_vars_orig;
         delete arjun;
     } else {
         read_input_cnf(appmc);
