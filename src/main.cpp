@@ -519,9 +519,7 @@ int main(int argc, char** argv)
         arjun = new ArjunNS::Arjun;
         arjun->set_seed(seed);
         arjun->set_verbosity(verbosity);
-        if (verbosity) {
-            cout << "c Arjun SHA revision " <<  arjun->get_version_info() << endl;
-        }
+        if (verbosity) cout << "c Arjun SHA revision " <<  arjun->get_version_info() << endl;
 
         read_input_cnf(arjun);
         set_up_sampling_set();
