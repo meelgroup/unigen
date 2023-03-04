@@ -562,7 +562,6 @@ int main(int argc, char** argv)
     check_sanity_sampling_vars(sampling_vars, appmc->nVars());
     auto sol_count = appmc->count();
 
-    appmc->set_projection_set(sampling_vars_orig);
     unigen->set_verbosity(verbosity);
     unigen->set_verb_banning_cls(verb_banning_cls);
     unigen->set_kappa(kappa);
