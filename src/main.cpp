@@ -83,7 +83,6 @@ int debug_arjun = 0;
 
 //sampling
 uint32_t num_samples = 500;
-int only_indep_samples ;
 int multisample;
 std::string sample_fname;
 double kappa;
@@ -109,7 +108,6 @@ void add_UniGen_options()
     UniG tmp2(NULL);
     kappa = tmp2.get_kappa();
     multisample = tmp2.get_multisample();
-    only_indep_samples = tmp2.get_only_indep_samples();
     verb_sampler_cls = tmp2. get_verb_sampler_cls();
 
     std::ostringstream my_epsilon;
@@ -166,8 +164,6 @@ void add_UniGen_options()
     sampling_options.add_options()
     ("samples", po::value(&num_samples)->default_value(num_samples)
         , "Number of random samples to generate. CAV2020 paper has 500, the default")
-    ("nosolext", po::value(&only_indep_samples)->default_value(only_indep_samples)
-        , "Should only output the independent vars from the samples")
     ("multisample", po::value(&multisample)->default_value(multisample)
         , "Return multiple samples from each call")
     ("sampleout", po::value(&sample_fname)
@@ -552,10 +548,9 @@ int main(int argc, char** argv)
     auto sol_count = appmc->count();
 
     unigen->set_verbosity(verbosity);
-    unigen->set_verb_banning_cls(verb_banning_cls);
+    unigen->set_verb_sampler_cls(verb_banning_cls);
     unigen->set_kappa(kappa);
     unigen->set_multisample(multisample);
-    unigen->set_only_indep_samples(only_indep_samples);
     unigen->set_full_sampling_vars(sampling_vars_orig);
 
     std::ofstream logfile;

@@ -52,7 +52,6 @@ DLL_PUBLIC TYPE UniG::get_##NAME () const \
     return data->conf.NAME; \
 } \
 
-
 namespace UniGen {
     struct UniGenPrivateData {
         Sampler sampler;
@@ -87,7 +86,7 @@ DLL_PUBLIC void UniG::sample(
     uint32_t num_samples)
 {
     if (data->sampler.callback_func == NULL) {
-        std::cout << "ERROR! You must set the callback function or your samples will be lost" << endl;
+        cout << "ERROR! You must set the callback function or your samples will be lost" << endl;
         exit(-1);
     }
     data->sampler.sample(data->conf, *sol_count, num_samples);
@@ -100,11 +99,10 @@ DLL_PUBLIC string UniG::get_version_info()
 
 set_get_macro(double, kappa)
 set_get_macro(bool, multisample)
-set_get_macro(bool, only_indep_samples)
-set_get_macro(bool, verb_banning_cls)
 set_get_macro(bool, force_sol_extension)
 set_get_macro(std::ostream*, logfile)
 set_get_macro(const std::vector<uint32_t>&, full_sampling_vars)
+set_get_macro(bool, verb_sampler_cls)
 
 DLL_PUBLIC void UniG::set_verbosity(uint32_t verb)
 {

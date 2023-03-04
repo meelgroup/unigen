@@ -35,8 +35,7 @@
 struct Config {
     uint32_t startiter = 0;
     unsigned verb = 1;
-    unsigned verb_banning_cls = 0;
-    bool only_indep_samples = true;
+    unsigned verb_sampler_cls = 0;
     uint32_t multisample = 1;
     int force_sol_extension = 0;
     double kappa = 0.638;  /* Corresponds to UniGen's epsilon=16 in the TACAS-15 paper */

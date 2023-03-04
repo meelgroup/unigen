@@ -51,9 +51,7 @@
 using std::cout;
 using std::cerr;
 using std::endl;
-using std::list;
 using std::map;
-using ApproxMC::SolCount;
 
 Hash Sampler::add_hash(uint32_t hash_index)
 {
@@ -74,10 +72,7 @@ Hash Sampler::add_hash(uint32_t hash_index)
 
     vars.push_back(act_var);
     solver->add_xor_clause(vars, rhs);
-    if (conf.verb_banning_cls) {
-        print_xor(vars, rhs);
-    }
-
+    if (conf.verb_sampler_cls) print_xor(vars, rhs);
     return h;
 }
 
@@ -116,13 +111,11 @@ uint64_t Sampler::add_glob_banning_cls(
         } else if ((int)num_hashes - (int)sm.hash_num < 9) {
             //Model has to fit all hashes
             bool ok = true;
-            uint32_t checked = 0;
             for(const auto& h: hm->hashes) {
                 //This hash is number: h.first
                 //Only has to match hashes below current need
                 //note that "h.first" is numbered from 0, so this is a "<" not "<="
                 if (h.first < num_hashes) {
-                    checked++;
                     ok &= check_model_against_hash(h.second, sm.model);
                     if (!ok) break;
                 }
@@ -153,13 +146,6 @@ SolNum Sampler::bounded_sol_count(
         << " bounded_sol_count looking for " << std::setw(4) << maxSolutions << " solutions"
         << " -- hashes active: " << hashCount << endl;
     }
-
-    //Will we need to extend the solution?
-    bool only_indep_sol = true;
-    if (out_solutions != NULL) {
-        only_indep_sol = conf.only_indep_samples;
-    }
-
     //Set up things for adding clauses that can later be removed
     vector<Lit> new_assumps;
     if (assumps) {
@@ -184,7 +170,6 @@ SolNum Sampler::bounded_sol_count(
             cout << "c [unig] inter-simp finished, total simp time: "
             << total_inter_simp_time << endl;
         }
-
     }
 
     const uint64_t repeat = add_glob_banning_cls(hm, sol_ban_var, hashCount);
@@ -192,8 +177,7 @@ SolNum Sampler::bounded_sol_count(
     double last_found_time = cpuTimeTotal();
     vector<vector<lbool>> models;
     while (solutions < maxSolutions) {
-        lbool ret = solver->solve(&new_assumps, only_indep_sol);
-        //COZ_PROGRESS_NAMED("one solution")
+        lbool ret = solver->solve(&new_assumps, false);
         assert(ret == l_False || ret == l_True);
 
         if (conf.verb >= 2) {
@@ -224,13 +208,9 @@ SolNum Sampler::bounded_sol_count(
         //Add solution to set
         solutions++;
         const vector<lbool> model = solver->get_model();
-        //#ifdef SLOW_DEBUG
         check_model(model, hm, hashCount);
-        //#endif
         models.push_back(model);
-        if (out_solutions) {
-            out_solutions->push_back(get_solution_ints(model));
-        }
+        if (out_solutions) out_solutions->push_back(get_solution_ints(model));
 
         //ban solution
         vector<Lit> lits;
@@ -239,9 +219,7 @@ SolNum Sampler::bounded_sol_count(
             assert(solver->get_model()[var] != l_Undef);
             lits.push_back(Lit(var, solver->get_model()[var] == l_True));
         }
-        if (conf.verb_banning_cls) {
-            cout << "c [unig] Adding banning clause: " << lits << endl;
-        }
+        if (conf.verb_sampler_cls)cout << "c [unig] Adding banning clause: " << lits << endl;
         solver->add_clause(lits);
     }
 
@@ -250,9 +228,7 @@ SolNum Sampler::bounded_sol_count(
         if (solutions >= minSolutions) {
             assert(minSolutions > 0);
             vector<size_t> modelIndices;
-            for (uint32_t i = 0; i < models.size(); i++) {
-                modelIndices.push_back(i);
-            }
+            for (uint32_t i = 0; i < models.size(); i++) modelIndices.push_back(i);
             std::shuffle(modelIndices.begin(), modelIndices.end(), randomEngine);
 
             for (uint32_t i = 0; i < sols_to_return(solutions); i++) {
@@ -515,17 +491,9 @@ uint32_t Sampler::gen_n_samples(
 vector<int> Sampler::get_solution_ints(const vector<lbool>& model)
 {
     vector<int> solution;
-    if (conf.only_indep_samples) {
-        for (uint32_t j = 0; j < appmc->get_sampling_set().size(); j++) {
-            uint32_t var = appmc->get_sampling_set()[j];
-            assert(model[var] != l_Undef);
-            solution.push_back(((model[var] != l_True) ? -1: 1) * ((int)var + 1));
-        }
-    } else {
-        for(uint32_t var = 0; var < orig_num_vars; var++) {
-            assert(model[var] != l_Undef);
-            solution.push_back(((model[var] != l_True) ? -1: 1) * ((int)var + 1));
-        }
+    for(const uint32_t var: conf.full_sampling_vars) {
+        assert(model[var] != l_Undef);
+        solution.push_back(((model[var] != l_True) ? -1: 1) * ((int)var + 1));
     }
     return solution;
 }
@@ -648,7 +616,6 @@ void Sampler::check_model(
     if (!hm)
         return;
 
-    uint32_t checked = 0;
     bool ok = true;
     for(const auto& h: hm->hashes) {
         //This hash is number: h.first
@@ -656,7 +623,6 @@ void Sampler::check_model(
         //Notice that "h.first" is numbered from 0, so it's a "<" not "<="
         if (h.first < hashCount) {
             //cout << "Checking model against hash" << h.first << endl;
-            checked++;
             ok &= check_model_against_hash(h.second, model);
             if (!ok) break;
         }
