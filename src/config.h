@@ -36,11 +36,12 @@ struct Config {
     uint32_t startiter = 0;
     unsigned verb = 1;
     unsigned verb_banning_cls = 0;
-    bool only_indep_samples = false;
+    bool only_indep_samples = true;
     uint32_t multisample = 1;
     int force_sol_extension = 0;
     double kappa = 0.638;  /* Corresponds to UniGen's epsilon=16 in the TACAS-15 paper */
     std::ostream* logfile = NULL;
+    std::vector<uint32_t> full_sampling_vars;
 };
 
 #endif

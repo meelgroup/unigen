@@ -73,13 +73,17 @@ public:
     void set_logfile(std::ostream* logfile);
     void set_verbosity(uint32_t verb);
     void set_callback(UniGen::callback f, void* data);
+    void set_full_sampling_vars(const std::vector<uint32_t>& full_sampl_vars);
 
     //Querying default values
-    double get_kappa();
-    bool get_multisample();
-    bool get_only_indep_samples();
-    bool get_verb_sampler_cls();
-    bool get_force_sol_extension();
+    double get_kappa() const;
+    bool get_multisample() const;
+    bool get_only_indep_samples() const;
+    bool get_verb_sampler_cls() const;
+    bool get_force_sol_extension() const;
+    bool get_verb_banning_cls() const;
+    std::ostream* get_logfile() const;
+    const std::vector<uint32_t>& get_full_sampling_vars() const;
 
 private:
     ////////////////////////////

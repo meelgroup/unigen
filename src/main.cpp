@@ -72,7 +72,6 @@ uint32_t simplify;
 double var_elim_ratio;
 uint32_t detach_xors = 1;
 uint32_t reuse_models = 1;
-uint32_t force_sol_extension = 0;
 uint32_t sparse;
 
 //Arjun
@@ -111,7 +110,6 @@ void add_UniGen_options()
     kappa = tmp2.get_kappa();
     multisample = tmp2.get_multisample();
     only_indep_samples = tmp2.get_only_indep_samples();
-    force_sol_extension = tmp2.get_force_sol_extension();
     verb_sampler_cls = tmp2. get_verb_sampler_cls();
 
     std::ostringstream my_epsilon;
@@ -154,8 +152,6 @@ void add_UniGen_options()
         , "Detach XORs in CMS")
     ("reusemodels", po::value(&reuse_models)->default_value(reuse_models)
         , "Reuse models while counting solutions")
-    ("forcesolextension", po::value(&force_sol_extension)->default_value(force_sol_extension)
-        , "Use trick of not extending solutions in the SAT solver to full solution")
     ;
 
     misc_options.add_options()
@@ -392,12 +388,12 @@ void read_input_cnf(T* reader)
     }
 }
 
-void print_orig_sampling_vars(const vector<uint32_t>& orig_sampling_vars)
+void print_sampling_vars_orig(const vector<uint32_t>& sampling_vars_orig)
 {
     cout << "c [unig] Original sampling vars: ";
-    for(auto v: orig_sampling_vars) cout << v << " ";
+    for(auto v: sampling_vars_orig) cout << v << " ";
     cout << endl;
-    cout << "c [unig] Orig sampling vars size: " << orig_sampling_vars.size() << endl;
+    cout << "c [unig] Orig sampling vars size: " << sampling_vars_orig.size() << endl;
 }
 
 void set_up_sampling_set()
@@ -499,12 +495,6 @@ int main(int argc, char** argv)
         cout << unigen->get_version_info();
         cout << "c executed with command line: " << command_line << endl;
     }
-    if (!only_indep_samples) {
-        force_sol_extension = true;
-        if (verbosity) {
-            cout << "c Setting '--forcesolextension' to 1 since '--nosolext' is set to 0" << endl;
-        }
-    }
 
     //Main options
     appmc->set_verbosity(verbosity);
@@ -516,7 +506,6 @@ int main(int argc, char** argv)
     //Improvement options
     appmc->set_detach_xors(detach_xors);
     appmc->set_reuse_models(reuse_models);
-    appmc->set_force_sol_extension(force_sol_extension);
     appmc->set_sparse(sparse);
 
     //Misc options
@@ -542,7 +531,7 @@ int main(int argc, char** argv)
         set_up_sampling_set();
         sampling_vars_orig = sampling_vars;
         check_sanity_sampling_vars(sampling_vars, arjun->get_orig_num_vars());
-        print_orig_sampling_vars(sampling_vars_orig);
+        print_sampling_vars_orig(sampling_vars_orig);
         get_cnf_from_arjun();
         sampling_vars = arjun->get_indep_set();
         print_final_indep_set(sampling_vars , sampling_vars_orig.size());
@@ -555,7 +544,7 @@ int main(int argc, char** argv)
             for(uint32_t i = 0; i < appmc->nVars(); i++) sampling_vars.push_back(i);
         }
         sampling_vars_orig = sampling_vars;
-        //print_orig_sampling_vars(sampling_vars, appmc);
+        //print_sampling_vars_orig(sampling_vars, appmc);
     }
 
     appmc->set_projection_set(sampling_vars);
@@ -567,7 +556,7 @@ int main(int argc, char** argv)
     unigen->set_kappa(kappa);
     unigen->set_multisample(multisample);
     unigen->set_only_indep_samples(only_indep_samples);
-    unigen->set_force_sol_extension(force_sol_extension);
+    unigen->set_full_sampling_vars(sampling_vars_orig);
 
     std::ofstream logfile;
     if (logfilename != "") {
