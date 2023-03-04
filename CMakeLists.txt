@@ -413,7 +413,7 @@ endmacro()
 # Dependencies
 # -----------------------------------------------------------------------------
 set(boost_components "")
-set(boost_components ${boost_components} program_options)
+set(boost_components ${boost_components} program_options serialization)
 find_package( Boost 1.46 COMPONENTS ${boost_components})
 
 option(NOZLIB "Don't use zlib" OFF)
