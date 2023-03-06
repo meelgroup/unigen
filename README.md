@@ -23,7 +23,7 @@ There are approx. 16  solutions over the sampling set. Samples:  [[1, -2, 3, -4]
 
 ```
 sudo apt-get install build-essential cmake
-sudo apt-get install zlib1g-dev libboost-program-options-dev libm4ri-dev
+sudo apt-get install zlib1g-dev libboost-program-options-dev libboost-serialization-dev
 git clone https://github.com/msoos/cryptominisat
 cd cryptominisat
 mkdir build && cd build
