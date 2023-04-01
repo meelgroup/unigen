@@ -72,3 +72,4 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
       run: |
         twine upload --skip-existing --disable-progress-bar dist/pyunigen*manylinux*.whl
+        twine upload --skip-existing --disable-progress-bar dist/pyunigen*.tar.gz
