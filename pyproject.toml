@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyunigen"
-version = "2.5.3"
+version = "2.5.4"
 description = "Bindings to UniGen, an approximate sampler"
 keywords = ["sat", "model-counting"]
 license = { file = "LICENSE" }
