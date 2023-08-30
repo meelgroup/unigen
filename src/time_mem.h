@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include <fstream>
 #include <string>
 #include <signal.h>
+#include <cstdint>
 
 // note: MinGW64 defines both __MINGW32__ and __MINGW64__
 #if defined (_MSC_VER) || defined (__MINGW32__) || defined(_WIN32)
