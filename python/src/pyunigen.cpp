@@ -56,7 +56,7 @@ struct PySampler {
 };
 
 static const char sampler_create_docstring[] = \
-"Sampler(verbosity=0, seed=1)\n\
+"Sampler(verbosity=0, seed=1, delta=0.2, epsilon=0.8, kappa=0.638)\n\
 Create Sampler object.\n\
 \n\
 :param verbosity: Verbosity level: 0: nothing printed; 15: very verbose.\n\
