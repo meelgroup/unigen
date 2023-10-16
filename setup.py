@@ -55,7 +55,7 @@ def gen_modules(version):
                    "python/src/GitSHA1.cpp",
                    "python/src/pyunigen.cpp",
                    "python/approxmc/src/approxmc.cpp",
-                   "python/approxmc/src/constants.cpp",
+                   "python/approxmc/src/appmc_constants.cpp",
                    "python/approxmc/src/counter.cpp",
                    "python/approxmc/python/src/GitSHA1.cpp",
                    "python/cryptominisat/python/src/GitSHA1.cpp",
