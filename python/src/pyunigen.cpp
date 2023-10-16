@@ -53,6 +53,7 @@ struct PySampler {
     bool called_already = false;
     uint32_t samples_needed = 5;
     uint32_t samples_generated = 0;
+    bool error_during_callback = false;
 };
 
 static const char sampler_create_docstring[] = \
@@ -73,10 +74,12 @@ Create Sampler object.\n\
 void pybinding_callback(const std::vector<int>& solution, void *self_in)
 {
     PySampler* self = (PySampler*) self_in;
+    if (self->error_during_callback) return;
     if (self->samples_generated >= self->samples_needed) return;
 
     PyObject* sample = PyList_New(solution.size());
     if (sample == NULL) {
+        self->error_during_callback = true;
         PyErr_SetString(PyExc_SystemError, "failed to create a list");
         return;
     }
@@ -84,12 +87,16 @@ void pybinding_callback(const std::vector<int>& solution, void *self_in)
     for (unsigned int i = 0; i < solution.size(); i++) {
         PyObject *lit = PyLong_FromLong((long)solution[i]);
         if (lit == NULL) {
+            self->error_during_callback = true;
             PyErr_SetString(PyExc_SystemError, "failed to create a list");
             return;
         }
         PyList_SET_ITEM(sample, i, lit);
     }
-    PyList_Append(self->sample_list, sample);
+    if (PyList_Append(self->sample_list, sample) == -1) {
+        self->error_during_callback = true;
+        return;
+    }
     self->samples_generated++;
 }
 
@@ -119,6 +126,11 @@ static int parse_sampling_set(PySampler *self, PyObject *sampling_set_obj)
         Py_DECREF(lit);
     }
     Py_DECREF(iterator);
+
+    for(const auto& v: self->sampling_set) if (v >= (long int)self->appmc->nVars()) {
+        PyErr_Format(PyExc_ValueError, "Sampling set provided is incorrect, it has a variable in it, %li, that is larger than the total number of variables: %li", v+1, (long int)self->appmc->nVars());
+        return NULL;
+    }
 
     return 1;
 }
@@ -317,6 +329,7 @@ PyDoc_STRVAR(sample_doc,
 Sample almost uniformly from the solutions for the clauses that have been \n\
 added with add_clause().\n\
 \n\
+:param num: The number of samples needed\n\
 :param sampling_set: (Optional) If provided, the solutions are sampled almost uniformly\n\
     over the variables in sampling_set.\n\
 :param cell_hash_count: (Optional) Pair of hash_count and cell_count. If provided, they are used instead of\n\
@@ -346,16 +359,16 @@ static PyObject* sample(PySampler *self, PyObject *args, PyObject *kwds)
     if (sampling_set_obj != NULL && !parse_sampling_set(self, sampling_set_obj)) {
         return NULL;
     }
+    if (sampling_set_obj == NULL) {
+        assert(self->sampling_set.empty());
+        for(uint32_t i = 0; i < self->appmc->nVars(); i++) self->sampling_set.push_back(i);
+    }
 
     ApproxMC::SolCount sol_count;
     if (cell_hash_count_obj != NULL && !parse_cell_hash_count(cell_hash_count_obj, sol_count)) {
         return NULL;
     }
 
-    if (sampling_set_obj == NULL) {
-        assert(self->sampling_set.empty());
-        for(uint32_t i = 0; i < self->appmc->nVars(); i++) self->sampling_set.push_back(i);
-    }
 
     self->appmc->set_projection_set(self->sampling_set);
 
@@ -368,6 +381,7 @@ static PyObject* sample(PySampler *self, PyObject *args, PyObject *kwds)
         PyErr_SetString(PyExc_SystemError, "failed to create a list");
         return NULL;
     }
+    self->unig->set_full_sampling_vars(self->sampling_set);
     self->unig->sample(&sol_count, self->samples_needed);
 
     PyObject *result = PyTuple_New((Py_ssize_t) 3);
@@ -375,6 +389,11 @@ static PyObject* sample(PySampler *self, PyObject *args, PyObject *kwds)
         PyErr_SetString(PyExc_SystemError, "failed to create a tuple");
         return NULL;
     }
+    if (self->error_during_callback) {
+        PyErr_SetString(PyExc_SystemError, "We encountered an error during our callback system. Can't return samples.");
+        return NULL;
+    }
+
     PyTuple_SET_ITEM(result, 0, PyLong_FromLong((long)sol_count.cellSolCount));
     PyTuple_SET_ITEM(result, 1, PyLong_FromLong((long)sol_count.hashCount));
     PyTuple_SET_ITEM(result, 2, self->sample_list);
