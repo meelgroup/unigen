@@ -483,9 +483,12 @@ PyMODINIT_FUNC PyInit_pyunigen(void)
     };
 
     m = PyModule_Create(&moduledef);
+    if (!m) return NULL;
 
     // Add the version string so users know what version of UniGen
     // they're using.
+#if defined(_MSC_VER)
+#else
     if (PyModule_AddStringConstant(m, "__version__", UNIGEN_FULL_VERSION) == -1) {
         Py_DECREF(m);
         return NULL;
@@ -494,10 +497,7 @@ PyMODINIT_FUNC PyInit_pyunigen(void)
         Py_DECREF(m);
         return NULL;
     }
-
-    if (!m) {
-        return NULL;
-    }
+#endif
 
     // Add the PySampler type
     Py_INCREF(&pyunigen_PySamplerType);
