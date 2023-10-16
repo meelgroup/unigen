@@ -1,4 +1,4 @@
-name: better-python-build
+name: python-wheels-build
 
 on: [push, pull_request]
 
@@ -8,8 +8,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04]
-        # os: [ubuntu-20.04, windows-2019, macOS-11]
+        os: [ubuntu-20.04, windows-2022]
 
     steps:
       - uses: actions/checkout@v2
@@ -42,6 +41,7 @@ jobs:
         env:
           CIBW_BEFORE_ALL_LINUX: yum install -y boost-devel zlib-devel
           CIBW_SKIP: "*musl*"
+          CIBW_ARCHS: "auto64"
 
       - uses: actions/upload-artifact@v3
         with:
