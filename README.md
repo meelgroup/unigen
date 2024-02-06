@@ -3,7 +3,7 @@
 [![Docker Hub](https://img.shields.io/badge/docker-latest-blue.svg)](https://hub.docker.com/r/msoos/unigen/)
 
 # UniGen3: Almost-Uniform Sampler
-UniGen3 is the state of the art almost-uniform sampler  utilizing an improved version of CryptoMiniSat to handle problems of size and complexity that were not possible before. The current version is based on work Mate Soos, Stephan Gocht, and Kuldeep S. Meel, as [published in CAV-20](http://comp.nus.edu.sg/~meel/Papers/cav20-sgm.pdf). Please see below for credits.  A large part of the work is in CryptoMiniSat [here](https://github.com/msoos/cryptominisat).
+UniGen3 is the state of the art almost-uniform sampler  utilizing an improved version of CryptoMiniSat to handle problems of size and complexity that were not possible before. The current version is based on work Mate Soos, Stephan Gocht, and Kuldeep S. Meel, as [published in CAV-20](http://www.cs.toronto.edu/~meel/Papers/cav20-sgm.pdf). Please see below for credits.  A large part of the work is in CryptoMiniSat [here](https://github.com/msoos/cryptominisat).
 
 ## How to use the Python package
 
@@ -118,7 +118,7 @@ int main () {
 
     lits.clear();
     lits.push_back(Lit(0, true));
-    lits.push_back(Lit(2, true));
+    lits.push_back(Lit(2, true));https://github.com/meelgroup/unigen
     appmc->addClause(lits);
 
     sol_count = appmc->count();
@@ -136,9 +136,9 @@ UniGen ensures that the generated distribution is within (1+\epsilon)-multiplica
 Please click on "issues" at the top and [create a new issue](https://github.com/meelgroup/unigen/issues/new). All issues are responded to promptly.
 
 ## How to Cite
-If you use UniGen, please cite the following papers: [CAV20](https://www.comp.nus.edu.sg/~meel/bib/SGM20.bib), [TACAS15](https://www.comp.nus.edu.sg/~meel/bib/CFMSV15a.bib), and [DAC14](https://www.comp.nus.edu.sg/~meel/bib/CMV14.bib).
+If you use UniGen, please cite the following papers: [CAV20](https://www.cs.toronto.edu/~meel/bib/SGM20.bib), [TACAS15](https://www.cs.toronto.edu/~meel/bib/CFMSV15a.bib), and [DAC14](https://www.cs.toronto.edu/~meel/bib/CMV14.bib).
 
-UniGen builds on a series of papers on hashing-based approach: [Related Publications](https://www.comp.nus.edu.sg/~meel/publications.html)
+UniGen builds on a series of papers on hashing-based approach: [Related Publications](https://www.cs.toronto.edu/~meel/publications.html)
 
 ## Contributors
 UniGen is based on research papers published over the period of 2012-20 and co-authored by (in alphabetical order): Supratik Chakraborty, Daniel Fremont, Stephan Gocht, Kuldeep S. Meel, Sanjit A. Seshia, Mate Soos, and Moshe Y. Vardi. 
