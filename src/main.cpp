@@ -70,7 +70,6 @@ string logfilename;
 uint32_t verb_banning_cls = 0;
 uint32_t simplify;
 double var_elim_ratio;
-uint32_t detach_xors = 1;
 uint32_t reuse_models = 1;
 uint32_t sparse;
 
@@ -146,8 +145,6 @@ void add_UniGen_options()
     improvement_options.add_options()
     ("sparse", po::value(&sparse)->default_value(sparse)
         , "Generate sparse XORs when possible")
-    ("detachxor", po::value(&detach_xors)->default_value(detach_xors)
-        , "Detach XORs in CMS")
     ("reusemodels", po::value(&reuse_models)->default_value(reuse_models)
         , "Reuse models while counting solutions")
     ;
@@ -494,13 +491,9 @@ int main(int argc, char** argv)
 
     //Main options
     appmc->set_verbosity(verbosity);
-    if (verbosity) {
-        appmc->set_detach_warning();
-    }
     appmc->set_seed(seed);
 
     //Improvement options
-    appmc->set_detach_xors(detach_xors);
     appmc->set_reuse_models(reuse_models);
     appmc->set_sparse(sparse);
 
