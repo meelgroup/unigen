@@ -22,29 +22,106 @@ jobs:
       # We'll use this as our working directory for all subsequent commands
       run: cmake -E make_directory ${{runner.workspace}}/build
     
-    - name: Get Dependencies
-      run: sudo apt-get update && sudo apt-get install -yq libboost-dev libboost-program-options-dev libboost-serialization-dev help2man
+    - name: Install boost & help2man for Linux
+      if: matrix.os == 'ubuntu-20.04'
+      run: sudo apt-get update && sudo apt-get install -yq libboost-dev libboost-serialization-dev libboost-program-options-dev help2man libgmp-dev libmpfr-dev
+    
+    - name: Install gmp for Mac
+      if: matrix.os == 'macos-13'
+      run: | 
+        HOMEBREW_NO_AUTO_UPDATE=1 brew install cmake
+        HOMEBREW_NO_AUTO_UPDATE=1 brew install zlib
+        wget https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz
+        tar xf gmp-6.3.0.tar.xz
+        cd gmp-6.3.0
+        ./configure --enable-static -enable-cxx --enable-shared
+        make -j8
+        sudo make install
+        cd ..
+      
+    - name: Install mpfr for Mac
+      if: matrix.os == 'macos-13'
+      run: | 
+        wget https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.1.tar.xz 
+        tar xf mpfr-4.2.1.tar.xz 
+        cd mpfr-4.2.1
+        ./configure --enable-static -enable-cxx --enable-shared
+        make -j8
+        sudo make install
+        cd ..
+       
+    - name: Checkout Cadical
+      uses: actions/checkout@v2
+      with:
+        repository: meelgroup/cadical
+        ref: mate-only-libraries-1.8.0
+        path: cadical
+        
+    - name: Build Cadical
+      run: |
+       cd cadical
+       ./configure
+       make -j8
+       cd ..
+
+    - name: Checkout Cadiback
+      uses: actions/checkout@v2
+      with:
+        repository: meelgroup/cadiback
+        ref: mate
+        path: cadiback
+        
+    - name: Build Cadiback
+      run: |
+       cd cadiback
+       ./configure
+       make -j8
+       cd ..
+    
+    - name: Checkout CMS
+      uses: actions/checkout@v2
+      with:
+        repository: msoos/cryptominisat
+        ref: 'master'
+        path: cryptominisat
     
     - name: Build CMS
       run: |
-       mkdir cms_git && cd cms_git
-       git clone --depth 1 https://github.com/msoos/cryptominisat
        cd cryptominisat
        mkdir build && cd build
-       cmake ..
+       cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
        make
-       cd ../../..
-
+       cd ../..
+       
+    - name: Checkout SBVA
+      uses: actions/checkout@v4
+      with:
+        repository: meelgroup/sbva
+        ref: master
+        path: sbva    
+        
+    - name: Build SBVA
+      run: |
+       cd sbva
+       mkdir build && cd build
+       cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
+       make -j8
+       cd ../..
+   
+    - name: Checkout Arjun
+      uses: actions/checkout@v2
+      with:
+        repository: meelgroup/arjun
+        path: arjun
+     
     - name: Build Arjun
       run: |
-       mkdir arjun_git && cd arjun_git
-       git clone --depth 1 https://github.com/meelgroup/arjun
        cd arjun
        mkdir build && cd build
-       cmake ..
+       cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
        make
-       cd ../../..
-
+       cd ../..
+    
     - name: Build AppMC
       run: |
        mkdir appmc_git && cd appmc_git
