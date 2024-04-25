@@ -129,15 +129,19 @@ jobs:
        make
        cd ../..
     
+    - name: Checkout AppMC
+      uses: actions/checkout@v2
+      with:
+        repository: meelgroup/approxmc
+        path: approxmc
+    
     - name: Build AppMC
       run: |
-       mkdir appmc_git && cd appmc_git
-       git clone --depth 1 https://github.com/meelgroup/approxmc
        cd approxmc
        mkdir build && cd build
-       cmake ..
+       cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
        make
-       cd ../../..
+       cd ../..
 
     - name: Configure CMake
       # Use a bash shell so we can use the same syntax for environment variable
