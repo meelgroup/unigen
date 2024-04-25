@@ -322,7 +322,6 @@ void Sampler::simplify()
     solver->set_intree_probe(1);
     solver->set_full_bve_iter_ratio(appmc->get_var_elim_ratio());
     solver->set_full_bve(1);
-    solver->set_bva(1);
     solver->set_distill(1);
     solver->set_scc(1);
 
@@ -331,7 +330,6 @@ void Sampler::simplify()
     solver->set_sls(0);
     solver->set_intree_probe(0);
     solver->set_full_bve(0);
-    solver->set_bva(0);
     solver->set_distill(0);
     //solver->set_scc(0);
 }
