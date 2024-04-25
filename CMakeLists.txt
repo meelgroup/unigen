@@ -91,6 +91,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package (Threads REQUIRED)
+find_package(sbva CONFIG REQUIRED)
 
 option(SANITIZE "Use Clang sanitizers. You MUST use clang++ as the compiler for this to work" OFF)
 if (SANITIZE)

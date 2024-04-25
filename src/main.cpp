@@ -309,8 +309,8 @@ void read_in_file(const string& filename, T* myreader)
         exit(-1);
     }
 
-    sampling_vars = parser.sampling_vars;
-    sampling_vars_found = parser.sampling_vars_found;
+    sampling_vars = myreader->get_sampl_vars();
+    sampling_vars_found = myreader->get_sampl_vars_set();
 
     #ifndef USE_ZLIB
     fclose(in);
@@ -347,8 +347,8 @@ void read_stdin(T* myreader)
         exit(-1);
     }
 
-    sampling_vars = parser.sampling_vars;
-    sampling_vars_found = parser.sampling_vars_found;
+    sampling_vars = myreader->get_sampl_vars();
+    sampling_vars_found = myreader->get_sampl_vars_set();
 
     #ifdef USE_ZLIB
     gzclose(in);
@@ -396,7 +396,7 @@ void set_up_sampling_set()
         sampling_vars.clear();
         for(uint32_t i = 0; i < arjun->nVars(); i++) sampling_vars.push_back(i);
     }
-    arjun->set_starting_sampling_set(sampling_vars);
+    arjun->set_sampl_vars(sampling_vars);
 }
 
 void get_cnf_from_arjun()
@@ -404,16 +404,13 @@ void get_cnf_from_arjun()
     bool ret = true;
     const uint32_t orig_num_vars = arjun->get_orig_num_vars();
     appmc->new_vars(orig_num_vars);
-    arjun->start_getting_small_clauses(
-        std::numeric_limits<uint32_t>::max(),
-        std::numeric_limits<uint32_t>::max(),
-        false);
+    arjun->start_getting_constraints(false);
     vector<Lit> clause;
     while (ret) {
-        ret = arjun->get_next_small_clause(clause);
-        if (!ret) {
-            break;
-        }
+        bool is_xor, rhs;
+        ret = arjun->get_next_constraint(clause, is_xor, rhs);
+        assert(rhs); assert(!is_xor);
+        if (!ret) break;
 
         bool ok = true;
         for(auto l: clause) {
@@ -428,7 +425,7 @@ void get_cnf_from_arjun()
         }
 
     }
-    arjun->end_getting_small_clauses();
+    arjun->end_getting_constraints();
 }
 
 inline double stats_line_percent(double num, double total)
@@ -520,7 +517,7 @@ int main(int argc, char** argv)
         check_sanity_sampling_vars(sampling_vars, arjun->get_orig_num_vars());
         print_sampling_vars_orig(sampling_vars_orig);
         get_cnf_from_arjun();
-        sampling_vars = arjun->get_indep_set();
+        sampling_vars = arjun->run_backwards();
         print_final_indep_set(sampling_vars , sampling_vars_orig.size());
         if (debug_arjun) sampling_vars = sampling_vars_orig;
         delete arjun;
@@ -534,7 +531,7 @@ int main(int argc, char** argv)
         //print_sampling_vars_orig(sampling_vars, appmc);
     }
 
-    appmc->set_projection_set(sampling_vars);
+    appmc->set_sampl_vars(sampling_vars);
     check_sanity_sampling_vars(sampling_vars, appmc->nVars());
     auto sol_count = appmc->count();
 
