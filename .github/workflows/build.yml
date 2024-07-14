@@ -158,3 +158,18 @@ jobs:
       shell: bash
       # Execute the build.  You can specify a specific target with "--target <NAME>"
       run: cmake --build .
+
+    - name: Upload Artifact - Linux
+      if: matrix.os == 'ubuntu-20.04' && matrix.staticcompile == 'ON'
+      uses: actions/upload-artifact@v3
+      with:     
+        name: unigen-linux-amd64
+        path: unigen/unigen
+    
+    - name: Upload Artifact - Mac
+      if: matrix.os == 'macos-13' && matrix.staticcompile == 'ON'
+      uses: actions/upload-artifact@v3
+      with:
+        name: unigen-mac-amd64
+        path: unigen/unigen
+
