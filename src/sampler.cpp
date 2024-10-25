@@ -30,6 +30,7 @@
 #include <cstring>
 #include <errno.h>
 #include <algorithm>
+#include <random>
 #include <string.h>
 #include <sstream>
 #include <iostream>
@@ -43,6 +44,7 @@
 #include <array>
 #include <cmath>
 #include <complex>
+#include <set>
 
 #include "time_mem.h"
 #include "GitSHA1.h"
@@ -52,6 +54,7 @@ using std::cout;
 using std::cerr;
 using std::endl;
 using std::map;
+using std::set;
 
 Hash Sampler::add_hash(uint32_t hash_index)
 {
@@ -489,9 +492,17 @@ uint32_t Sampler::gen_n_samples(
 vector<int> Sampler::get_solution_ints(const vector<lbool>& model)
 {
     vector<int> solution;
+    set<uint32_t> empty_set(
+            conf.empty_sampling_vars.begin(), conf.empty_sampling_vars.end());
+    std::uniform_int_distribution<uint32_t> dist{0, 1};
     for(const uint32_t var: conf.full_sampling_vars) {
         assert(model[var] != l_Undef);
-        solution.push_back(((model[var] != l_True) ? -1: 1) * ((int)var + 1));
+        if (empty_set.count(var)) {
+            bool val = dist(randomEngine);
+            solution.push_back((var+1) * (val ? -1: 1));
+        } else {
+            solution.push_back(((model[var] != l_True) ? -1: 1) * ((int)var + 1));
+        }
     }
     return solution;
 }

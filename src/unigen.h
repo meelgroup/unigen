@@ -73,7 +73,8 @@ public:
     void set_logfile(std::ostream* logfile);
     void set_verbosity(uint32_t verb);
     void set_callback(UniGen::callback f, void* data);
-    void set_full_sampling_vars(const std::vector<uint32_t>& full_sampl_vars);
+    void set_full_sampling_vars(const std::vector<uint32_t>& vars);
+    void set_empty_sampling_vars(const std::vector<uint32_t>& vars);
 
     //Querying default values
     double get_kappa() const;
@@ -84,6 +85,7 @@ public:
     bool get_verb_banning_cls() const;
     std::ostream* get_logfile() const;
     const std::vector<uint32_t>& get_full_sampling_vars() const;
+    const std::vector<uint32_t>& get_empty_sampling_vars() const;
 
 private:
     ////////////////////////////

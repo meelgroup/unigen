@@ -503,8 +503,8 @@ int main(int argc, char** argv)
         cout << "c [appmc] Logfile set " << logfilename << endl;
     }
 
-    vector<uint32_t> empty_occ_sampl_vars;
     vector<uint32_t> sampling_vars_orig;
+    vector<uint32_t> empty_sampl_vars;
     if (do_arjun) {
         arjun = new ArjunNS::Arjun;
         arjun->set_seed(seed);
@@ -520,6 +520,7 @@ int main(int argc, char** argv)
         sampling_vars = arjun->run_backwards();
         print_final_indep_set(sampling_vars , sampling_vars_orig.size());
         if (debug_arjun) sampling_vars = sampling_vars_orig;
+        empty_sampl_vars = arjun->get_empty_sampl_vars();
         delete arjun;
     } else {
         read_input_cnf(appmc);
@@ -533,13 +534,16 @@ int main(int argc, char** argv)
 
     appmc->set_sampl_vars(sampling_vars);
     check_sanity_sampling_vars(sampling_vars, appmc->nVars());
-    auto sol_count = appmc->count();
+    auto sol_count_unig = appmc->count();
+    auto sol_count_actual = sol_count_unig;
+    sol_count_actual.hashCount += empty_sampl_vars.size();
 
     unigen->set_verbosity(verbosity);
     unigen->set_verb_sampler_cls(verb_banning_cls);
     unigen->set_kappa(kappa);
     unigen->set_multisample(multisample);
     unigen->set_full_sampling_vars(sampling_vars_orig);
+    unigen->set_empty_sampling_vars(empty_sampl_vars);
 
     std::ofstream logfile;
     if (logfilename != "") {
@@ -565,7 +569,7 @@ int main(int argc, char** argv)
     }
 
     unigen->set_callback(mycallback, myfile);
-    unigen->sample(&sol_count, num_samples);
+    unigen->sample(&sol_count_unig, num_samples);
 
     delete unigen;
     delete appmc;

@@ -41,6 +41,7 @@ struct Config {
     double kappa = 0.638;  /* Corresponds to UniGen's epsilon=16 in the TACAS-15 paper */
     std::ostream* logfile = NULL;
     std::vector<uint32_t> full_sampling_vars;
+    std::vector<uint32_t> empty_sampling_vars;
 };
 
 #endif
