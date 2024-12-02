@@ -2,7 +2,7 @@ FROM ubuntu:20.04 as builder
 
 LABEL maintainer="Mate Soos"
 LABEL version="1.0"
-LABEL Description="Approxmc"
+LABEL Description="UniGen"
 
 # get curl, etc
 RUN apt-get update && apt-get install --no-install-recommends -y software-properties-common
