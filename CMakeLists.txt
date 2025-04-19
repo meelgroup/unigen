@@ -339,7 +339,7 @@ if (GIT_EXECUTABLE)
 else()
   set(GIT_SHA "GIT-hash-notfound")
 endif()
-set(UNIGEN_FULL_VERSION "2.5.8")
+set(UNIGEN_FULL_VERSION "2.6.0")
 
 string(REPLACE "." ";" UNIGEN_FULL_VERSION_LIST ${UNIGEN_FULL_VERSION})
 SetVersionNumber("PROJECT" ${UNIGEN_FULL_VERSION_LIST})
