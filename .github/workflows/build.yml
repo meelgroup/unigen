@@ -2,42 +2,26 @@ name: build
 
 on: [push]
 
-env:
-  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
-  BUILD_TYPE: Release
-
-
 jobs:
   build:
-    # The CMake configure and build commands are platform agnostic and should work equally
-    # well on Windows or Mac.  You can convert this to a matrix build if you need
-    # cross-platform coverage.
-    # See: https://docs.github.com/en/actions/configuring-and-managing-workflows/configuring-a-workflow#configuring-a-build-matrix
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        #os: [ubuntu-20.04, windows-2022, macos-13]
-        os: [ubuntu-20.04]
+        os: [ubuntu-latest, macos-14, ubuntu-24.04-arm, macos-13]
         build_type: ['Release']
         staticcompile: ['ON', 'OFF']
-        
+
     steps:
-    - uses: actions/checkout@v2
-    
     - name: Create Build Environment
-      # Some projects don't allow in-source building, so create a separate build directory
-      # We'll use this as our working directory for all subsequent commands
       run: cmake -E make_directory ${{runner.workspace}}/build
-    
+
     - name: Install boost & help2man for Linux
       if: matrix.os == 'ubuntu-20.04'
       run: sudo apt-get update && sudo apt-get install -yq libboost-dev libboost-serialization-dev libboost-program-options-dev help2man libgmp-dev libmpfr-dev
-    
+
     - name: Install gmp for Mac
-      if: matrix.os == 'macos-13'
-      run: | 
-        HOMEBREW_NO_AUTO_UPDATE=1 brew install cmake
-        HOMEBREW_NO_AUTO_UPDATE=1 brew install zlib
+      if: contains(matrix.os, 'macos')
+      run: |
         wget https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz
         tar xf gmp-6.3.0.tar.xz
         cd gmp-6.3.0
@@ -45,25 +29,25 @@ jobs:
         make -j8
         sudo make install
         cd ..
-      
+
     - name: Install mpfr for Mac
-      if: matrix.os == 'macos-13'
-      run: | 
-        wget https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.1.tar.xz 
-        tar xf mpfr-4.2.1.tar.xz 
+      if: contains(matrix.os, 'macos')
+      run: |
+        wget https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.1.tar.xz
+        tar xf mpfr-4.2.1.tar.xz
         cd mpfr-4.2.1
         ./configure --enable-static -enable-cxx --enable-shared
         make -j8
         sudo make install
         cd ..
-       
+
     - name: Checkout Cadical
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: meelgroup/cadical
         ref: mate-only-libraries-1.8.0
         path: cadical
-        
+
     - name: Build Cadical
       run: |
        cd cadical
@@ -72,104 +56,119 @@ jobs:
        cd ..
 
     - name: Checkout Cadiback
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: meelgroup/cadiback
         ref: mate
         path: cadiback
-        
+
     - name: Build Cadiback
       run: |
        cd cadiback
        ./configure
        make -j8
        cd ..
-    
+
     - name: Checkout CMS
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: msoos/cryptominisat
         ref: 'master'
         path: cryptominisat
-    
+
     - name: Build CMS
       run: |
        cd cryptominisat
        mkdir build && cd build
        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
-       make
+       cmake --build . --config ${{matrix.build_type}} -v
        cd ../..
-       
+
     - name: Checkout SBVA
       uses: actions/checkout@v4
       with:
         repository: meelgroup/sbva
         ref: master
-        path: sbva    
-        
+        path: sbva
+
     - name: Build SBVA
       run: |
        cd sbva
        mkdir build && cd build
        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
-       make -j8
+       cmake --build . --config ${{matrix.build_type}} -v
        cd ../..
-   
+
     - name: Checkout Arjun
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: meelgroup/arjun
         path: arjun
-     
+
     - name: Build Arjun
       run: |
        cd arjun
        mkdir build && cd build
        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
-       make
+       cmake --build . --config ${{matrix.build_type}} -v
        cd ../..
-    
+
     - name: Checkout AppMC
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: meelgroup/approxmc
         path: approxmc
-    
+
     - name: Build AppMC
       run: |
        cd approxmc
        mkdir build && cd build
        cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} ..
-       make
+       cmake --build . --config ${{matrix.build_type}} -v
        cd ../..
 
-    - name: Configure CMake
-      # Use a bash shell so we can use the same syntax for environment variable
-      # access regardless of the host operating system
-      shell: bash
-      working-directory: ${{runner.workspace}}/build
-      # Note the current convention is to use the -S and -B options here to specify source 
-      # and build directories, but this is only available with CMake 3.13 and higher.  
-      # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
-      run: cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DENABLE_TESTING=OFF -DSTATICCOMPILE=${{ matrix.staticcompile }} $GITHUB_WORKSPACE
+    - uses: actions/checkout@v4
+      with:
+        path: project
+        submodules: 'true'
 
-    - name: Build
-      working-directory: ${{runner.workspace}}/build
-      shell: bash
-      # Execute the build.  You can specify a specific target with "--target <NAME>"
-      run: cmake --build .
+    - name: Build project
+      run: |
+        cd project
+        mkdir -p build && cd build
+        cmake \
+        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
+        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+        -DSTATICCOMPILE=${{ matrix.staticcompile }} \
+        -S ..
+        cmake --build . --config ${{matrix.build_type}} -v
 
-    - name: Upload Artifact - Linux
-      if: matrix.os == 'ubuntu-20.04' && matrix.staticcompile == 'ON'
-      uses: actions/upload-artifact@v3
-      with:     
+    - name: Upload Artifact - Linux AMD64
+      if: contains(matrix.os, 'ubuntu') && matrix.staticcompile == 'ON' && !contains(matrix.os, 'arm')
+      uses: actions/upload-artifact@v4
+      with:
         name: unigen-linux-amd64
         path: unigen/unigen
-    
-    - name: Upload Artifact - Mac
-      if: matrix.os == 'macos-13' && matrix.staticcompile == 'ON'
-      uses: actions/upload-artifact@v3
+
+    - name: Upload Artifact - Linux ARM
+      if: contains(matrix.os, 'ubuntu') && matrix.staticcompile == 'ON' && contains(matrix.os, 'arm')
+      uses: actions/upload-artifact@v4
       with:
-        name: unigen-mac-amd64
+        name: unigen-linux-arm64
+        path: unigen/unigen
+
+    - name: Upload Artifact - Mac x86_64
+      if: matrix.os == 'macos-13' && matrix.staticcompile == 'ON'
+      uses: actions/upload-artifact@v4
+      with:
+        name: unigen-mac-x86_64
+        path: unigen/unigen
+
+    - name: Upload Artifact - Mac ARM
+      if: matrix.os == 'macos-14' && matrix.staticcompile == 'ON'
+      uses: actions/upload-artifact@v4
+      with:
+        name: unigen-mac-arm64
         path: unigen/unigen
 
