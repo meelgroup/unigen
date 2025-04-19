@@ -10,7 +10,7 @@ CAV-20](http://www.cs.toronto.edu/~meel/Papers/cav20-sgm.pdf). Please see below
 for credits.  A large part of the work is in CryptoMiniSat
 [here](https://github.com/msoos/cryptominisat).
 
-### Sampling Set
+## Sampling Set
 For some applications, one is not interested in solutions over all the
 variables and instead interested in sampling over the solutions projected to a
 subset of variables, called sampling set. UniGen allows you to specify the
@@ -28,7 +28,15 @@ contains 7 variables, then the maximum number of solutions restricted to
 sampling set can only be at most 2^7 = 128. This is true even if your CNF has
 thousands of variables.
 
-### Library Use
+## Building
+It is highly discouraged to build UniGen from source. Instead, please use the
+provided static binaries for your platform from our
+[releases](https://github.com/meelgroup/unigen/releases/tag/2.5.7). In case you
+must compile from source, please follow the [GitHub
+action](https://github.com/meelgroup/unigen/actions/workflows/build.yml), whih
+builds everything from source for all supported platforms.
+
+## Library Use
 Below is an example library use:
 
 ```
