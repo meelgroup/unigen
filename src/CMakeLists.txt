@@ -18,9 +18,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-include_directories(
-    ${PROJECT_SOURCE_DIR}
-)
+include_directories( ${PROJECT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+include_directories(${Boost_INCLUDE_DIRS})
+include_directories(${CRYPTOMINISAT5_INCLUDE_DIRS})
+include_directories(${APPROXMC_INCLUDE_DIRS})
+include_directories(${GMP_INCLUDE_DIRS})
+include_directories(${ARJUN_INCLUDE_DIRS})
 
 if (NOT WIN32)
     add_cxx_flag_if_supported("-Wno-bitfield-constant-conversion")
@@ -37,14 +41,8 @@ if (NOT WIN32)
     #add_cxx_flag_if_supported("-Wdeprecated")
 endif()
 
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
-include_directories(${Boost_INCLUDE_DIRS})
-include_directories(${CRYPTOMINISAT5_INCLUDE_DIRS})
-include_directories(${APPROXMC_INCLUDE_DIRS})
-include_directories(${GMP_INCLUDE_DIRS})
-include_directories(${ARJUN_INCLUDE_DIRS})
-
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GitSHA1.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp" @ONLY)
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/GitSHA1.cpp.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/GitSHA1.cpp" @ONLY)
 
 set(unigen_lib_files
     sampler.cpp
@@ -53,17 +51,6 @@ set(unigen_lib_files
 )
 
 add_library(unigen ${unigen_lib_files})
-
-target_include_directories(unigen PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include>
-)
-
-set_target_properties(unigen PROPERTIES
-    PUBLIC_HEADER "${unigen_public_headers}"
-    VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-    SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-)
 
 target_link_libraries(unigen
     LINK_PUBLIC ${CRYPTOMINISAT5_LIBRARIES}
@@ -81,11 +68,11 @@ set_target_properties(unigen PROPERTIES
   INSTALL_RPATH_USE_LINK_PATH TRUE
 )
 
-set(unigen_exec_link_libs "")
+add_executable(unigen-bin main.cpp)
+set(unigen_exec_link_libs "unigen")
 IF (ZLIB_FOUND)
     SET(unigen_exec_link_libs ${unigen_exec_link_libs} ${ZLIB_LIBRARY})
 ENDIF()
-add_executable(unigen-bin main.cpp)
 target_link_libraries(unigen-bin ${unigen_exec_link_libs})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
