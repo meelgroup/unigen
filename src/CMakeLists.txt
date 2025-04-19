@@ -114,12 +114,7 @@ add_executable(unigen-bin
     main.cpp
     ${unigen_lib_files}
 )
-
-set(unigen_exec_link_libs
-    ${Boost_LIBRARIES}
-    ${GMP_LIBRARY}
-)
-
+set(unigen_exec_link_libs "")
 IF (ZLIB_FOUND)
     SET(unigen_exec_link_libs ${unigen_exec_link_libs} ${ZLIB_LIBRARY})
 ENDIF()
@@ -129,6 +124,7 @@ target_link_libraries(unigen-bin
     ${LOUVAIN_COMMUNITIES_LIBRARIES}
     ${CRYPTOMINISAT5_LIBRARIES}
     ${APPROXMC_LIBRARIES}
+    ${GMP_LIBRARY}
     ${unigen_exec_link_libs}
     unigen
 )
