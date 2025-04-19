@@ -37,21 +37,6 @@ if (NOT WIN32)
     #add_cxx_flag_if_supported("-Wdeprecated")
 endif()
 
-macro(unigen_add_public_header LIBTARGET HEADER)
-    get_target_property(EXISTING_PUBLIC_HEADERS ${LIBTARGET} PUBLIC_HEADER)
-    if(EXISTING_PUBLIC_HEADERS)
-        list(APPEND EXISTING_PUBLIC_HEADERS "${HEADER}")
-    else()
-        # Do not append to empty list
-        set(EXISTING_PUBLIC_HEADERS "${HEADER}")
-    endif()
-    set_target_properties(
-        ${LIBTARGET}
-        PROPERTIES
-        PUBLIC_HEADER "${EXISTING_PUBLIC_HEADERS}"
-     )
-endmacro()
-
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${CRYPTOMINISAT5_INCLUDE_DIRS})
@@ -80,6 +65,44 @@ set_target_properties(unigen PROPERTIES
     SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
 )
 
+target_link_libraries(unigen
+    LINK_PUBLIC ${CRYPTOMINISAT5_LIBRARIES}
+    LINK_PUBLIC ${ARJUN_LIBRARIES}
+    LINK_PUBLIC ${APPROXMC_LIBRARIES}
+    LINK_PUBLIC ${MPFR_LIBRARIES}
+    LINK_PUBLIC ${GMP_LIBRARY}
+)
+
+set_target_properties(unigen PROPERTIES
+  PUBLIC_HEADER "${unigen_public_headers}"
+  VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+  SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
+
+set(unigen_exec_link_libs "")
+IF (ZLIB_FOUND)
+    SET(unigen_exec_link_libs ${unigen_exec_link_libs} ${ZLIB_LIBRARY})
+ENDIF()
+add_executable(unigen-bin main.cpp)
+target_link_libraries(unigen-bin ${unigen_exec_link_libs})
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+    set_target_properties(unigen-bin PROPERTIES
+      OUTPUT_NAME unigen
+      RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+      INSTALL_RPATH_USE_LINK_PATH TRUE
+      LINK_FLAGS "-s WASM=1 -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_RUNTIME_METHODS='[\"callMain\", \"ccall\", \"cwrap\", \"FS\", \"print\"]' -s FORCE_FILESYSTEM=1"
+    )
+else()
+    set_target_properties(unigen-bin PROPERTIES
+      OUTPUT_NAME unigen
+      RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
+      INSTALL_RPATH_USE_LINK_PATH TRUE
+    )
+endif()
+
 unigen_add_public_header(unigen ${CMAKE_CURRENT_SOURCE_DIR}/unigen.h )
 
 # -----------------------------------------------------------------------------
@@ -107,34 +130,7 @@ install(TARGETS unigen
     PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/unigen"
 )
 
-add_executable(unigen-bin
-    main.cpp
-)
-set(unigen_exec_link_libs "")
-IF (ZLIB_FOUND)
-    SET(unigen_exec_link_libs ${unigen_exec_link_libs} ${ZLIB_LIBRARY})
-ENDIF()
-
-target_link_libraries(unigen-bin
-    ${ARJUN_LIBRARIES}
-    ${APPROXMC_LIBRARIES}
-    ${CRYPTOMINISAT5_LIBRARIES}
-    ${GMP_LIBRARY}
-    ${unigen_exec_link_libs}
-    unigen
-)
-
-set_target_properties(unigen-bin PROPERTIES
-        OUTPUT_NAME unigen
-        RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
-        INSTALL_RPATH_USE_LINK_PATH TRUE)
-
 install(TARGETS unigen-bin
-    EXPORT ${unigen_EXPORT_NAME}
+    EXPORT ${UNIGEN_EXPORT_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-    PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/unigen"
-
 )
-SET(CPACK_PACKAGE_EXECUTABLES "unigen")
