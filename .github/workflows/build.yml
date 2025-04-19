@@ -254,26 +254,26 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: unigen-linux-amd64
-        path: unigen/unigen
+        path: project/build/unigen
 
     - name: Upload Artifact - Linux ARM
       if: contains(matrix.os, 'ubuntu') && matrix.staticcompile == 'ON' && contains(matrix.os, 'arm')
       uses: actions/upload-artifact@v4
       with:
         name: unigen-linux-arm64
-        path: unigen/unigen
+        path: project/build/unigen
 
     - name: Upload Artifact - Mac x86_64
       if: matrix.os == 'macos-13' && matrix.staticcompile == 'ON'
       uses: actions/upload-artifact@v4
       with:
         name: unigen-mac-x86_64
-        path: unigen/unigen
+        path: project/build/unigen
 
     - name: Upload Artifact - Mac ARM
       if: matrix.os == 'macos-14' && matrix.staticcompile == 'ON'
       uses: actions/upload-artifact@v4
       with:
         name: unigen-mac-arm64
-        path: unigen/unigen
+        path: project/build/unigen
 
