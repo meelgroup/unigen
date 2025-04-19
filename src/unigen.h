@@ -26,19 +26,13 @@
  THE SOFTWARE.
  */
 
-#ifndef UNIGEN_H__
-#define UNIGEN_H__
+#pragma once
 
 #include <cstdint>
 #include <string>
 #include <vector>
-#include <fstream>
 #include <functional>
-#ifdef CMS_LOCAL_BUILD
-#include "cryptominisat.h"
-#else
 #include <cryptominisat5/cryptominisat.h>
-#endif
 
 namespace ApproxMC {
     class AppMC;
@@ -93,5 +87,3 @@ private:
 };
 
 }
-
-#endif
