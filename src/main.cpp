@@ -51,7 +51,7 @@ using std::string;
 using std::set;
 ApproxMC::AppMC* appmc = NULL;
 UniG* unigen = NULL;
-argparse::ArgumentParser program = argparse::ArgumentParser("approxmc");
+argparse::ArgumentParser program = argparse::ArgumentParser("unigen", UniGen::UniG::get_version_sha1(), argparse::default_arguments::help);
 std::unique_ptr<CMSat::FieldGen> fg;
 
 uint32_t verb = 1;
@@ -65,8 +65,7 @@ uint32_t reuse_models = 1;
 uint32_t sparse;
 
 // Arjun
-int do_arjun = 1;
-int debug_arjun = 0;
+int do_arjun = 0;
 int arjun_gates = 0;
 ArjunNS::SimpConf simp_conf;
 ArjunNS::Arjun::ElimToFileConf etof_conf;
@@ -115,6 +114,10 @@ void add_unigen_options() {
     seed = tmp.get_seed();
 
     myopt2("-v", "--verb", verb, atoi, "Verbosity");
+    program.add_argument("-v", "--version") \
+        .action([&](const auto&) {print_version(); exit(0);}) \
+        .flag()
+        .help("Print version and exit");
     myopt2("-s", "--seed", seed, atoi, "Seed");
     myopt2("-e", "--epsilon", epsilon, stod,
             "Tolerance parameter, i.e. how close is the count from the correct count? "
@@ -125,13 +128,9 @@ void add_unigen_options() {
             "(1-d) = probability the count is within range as per epsilon parameter. "
             "So d=0.2 means we are 80%% sure the count is within range as specified by epsilon. "
             "The lower, the higher confidence we have in the count.");
-    program.add_argument("-v", "--version") \
-        .action([&](const auto&) {print_version(); exit(0);}) \
-        .flag()
-        .help("Print version and exit");
+    myopt("--kappa", kappa, atof, "Uniformity parameter (see TACAS-15 paper)");
 
     myopt("--arjun", do_arjun, atoi, "Use arjun to minimize sampling set");
-    myopt("--debugarjun", debug_arjun, atoi , "Use CNF from Arjun, but us;e sampling set from CNF");
     myopt("--sparse", sparse, atoi, "Generate sparse XORs when possible");
     myopt("--reusemodels", reuse_models, atoi, "Reuse models while counting solutions");
     myopt("--verbanbcls", verb_banning_cls, atoi ,"Print banning clause + xor clauses. Highly verbose.");
@@ -140,7 +139,6 @@ void add_unigen_options() {
     myopt("--samples", num_samples, atoi, "Number of random samples to generate");
     myopt("--multisample", multisample, atoi, "Return multiple samples from each call");
     myopt("--sampleout", sample_fname, string, "Write samples to this file");
-    myopt("--kappa", kappa, atof, "Uniformity parameter (see TACAS-15 paper)");
     myopt("--verbsamplercls", verb_sampler_cls, atoi, "Print XOR constraints added for sampling");
 
     program.add_argument("inputfile").remaining().help("input CNF");
