@@ -30,7 +30,6 @@
 
 #include <vector>
 #include <cstdint>
-#include <fstream>
 
 struct Config {
     unsigned verb = 1;
@@ -38,7 +37,6 @@ struct Config {
     uint32_t multisample = 1;
     int force_sol_extension = 0;
     double kappa = 0.638;  /* Corresponds to UniGen's epsilon=16 in the TACAS-15 paper */
-    std::ostream* logfile = NULL;
     std::vector<uint32_t> full_sampling_vars;
     std::vector<uint32_t> empty_sampling_vars;
 };

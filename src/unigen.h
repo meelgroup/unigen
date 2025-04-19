@@ -70,7 +70,6 @@ public:
     void set_only_indep_samples(bool only_indep_samples);
     void set_verb_sampler_cls(bool verb_sampler_cls);
     void set_force_sol_extension(bool force_sol_extension);
-    void set_logfile(std::ostream* logfile);
     void set_verbosity(uint32_t verb);
     void set_callback(UniGen::callback f, void* data);
     void set_full_sampling_vars(const std::vector<uint32_t>& vars);
@@ -83,7 +82,6 @@ public:
     bool get_verb_sampler_cls() const;
     bool get_force_sol_extension() const;
     bool get_verb_banning_cls() const;
-    std::ostream* get_logfile() const;
     const std::vector<uint32_t>& get_full_sampling_vars() const;
     const std::vector<uint32_t>& get_empty_sampling_vars() const;
 

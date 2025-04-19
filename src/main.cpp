@@ -58,7 +58,6 @@ uint32_t verb = 1;
 uint32_t seed;
 double epsilon;
 double delta;
-string logfilename;
 uint32_t verb_banning_cls = 0;
 uint32_t simplify;
 double var_elim_ratio;
@@ -131,7 +130,6 @@ void add_unigen_options() {
         .flag()
         .help("Print version and exit");
 
-    myopt("--log", logfilename, string, "Logs of ApproxMC execution") ;
     myopt("--arjun", do_arjun, atoi, "Use arjun to minimize sampling set");
     myopt("--debugarjun", debug_arjun, atoi , "Use CNF from Arjun, but us;e sampling set from CNF");
     myopt("--sparse", sparse, atoi, "Generate sparse XORs when possible");
@@ -286,10 +284,6 @@ int main(int argc, char** argv) {
     appmc->set_sparse(sparse);
     appmc->set_simplify(simplify);
     appmc->set_var_elim_ratio(var_elim_ratio);
-
-    if (logfilename != "") {
-        appmc->set_up_log(logfilename);
-    }
 
     vector<uint32_t> sampling_vars_orig;
     vector<uint32_t> empty_sampl_vars;

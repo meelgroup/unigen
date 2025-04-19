@@ -147,16 +147,6 @@ private:
     ////////////////
     void print_xor(const vector<uint32_t>& vars, const uint32_t rhs);
     vector<int> get_solution_ints(const vector<lbool>& model);
-    void write_log(
-        bool sampling,
-        int iter,
-        uint32_t hashCount,
-        int found_full,
-        uint32_t num_sols,
-        uint32_t repeat_sols,
-        double used_time
-    );
-    void openLogFile();
     void call_after_parse();
     void ban_one(const uint32_t act_var, const vector<lbool>& model);
     void check_model(

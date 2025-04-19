@@ -241,7 +241,6 @@ void Sampler::sample(Config _conf,
     solver = appmc->get_solver();
     orig_num_vars = solver->nVars();
     startTime = cpuTimeTotal();
-    openLogFile();
     randomEngine.seed(appmc->get_seed());
 
     /* Compute threshold via formula from TACAS-15 paper */
@@ -387,8 +386,6 @@ uint32_t Sampler::gen_n_samples(
             uint32_t currentHashOffset = hashOffsets[j];
             uint32_t currentHashCount = currentHashOffset + startiter;
             const vector<Lit> assumps = set_num_hashes(currentHashCount, hashes);
-
-            double myTime = cpuTime();
             const uint64_t solutionCount = bounded_sol_count(
                 hiThresh // max num solutions
                 , &assumps //assumptions to use
@@ -396,11 +393,6 @@ uint32_t Sampler::gen_n_samples(
                 , loThresh //min number of solutions (samples not output otherwise)
             ).solutions;
             ok = (solutionCount < hiThresh && solutionCount >= loThresh);
-            write_log(
-                true, //sampling
-                i, currentHashCount, solutionCount == hiThresh,
-                      solutionCount, 0, cpuTime()-myTime);
-
             if (ok) {
                 num_samples += sols_to_return(num_samples_needed);
                 *lastSuccessfulHashOffset = currentHashOffset;
@@ -489,45 +481,6 @@ uint32_t Sampler::sols_to_return(uint32_t numSolutions) {
     if (startiter == 0) return numSolutions;
     else if (conf.multisample) return loThresh;
     else return 1;
-}
-
-void Sampler::openLogFile() {
-    if (conf.logfile) {
-        *conf.logfile << std::left
-        << std::setw(5) << "sampl"
-        << " " << std::setw(4) << "iter"
-        << " " << std::setw(4) << "hash"
-        << " " << std::setw(4) << "full"
-        << " " << std::setw(4) << "sols"
-        << " " << std::setw(4) << "rep"
-        << " " << std::setw(7) << "T"
-        << " " << std::setw(7) << "total T"
-        << endl;
-
-    }
-}
-
-void Sampler::write_log(bool sampling,
-    int iter,
-    uint32_t hashCount,
-    int found_full,
-    uint32_t num_sols,
-    uint32_t repeat_sols,
-    double used_time
-) {
-    if (conf.logfile) {
-        *conf.logfile
-        << std::left
-        << std::setw(5) << (int)sampling
-        << " " << std::setw(4) << iter
-        << " " << std::setw(4) << hashCount
-        << " " << std::setw(4) << found_full
-        << " " << std::setw(4) << num_sols
-        << " " << std::setw(4) << repeat_sols
-        << " " << std::setw(7) << std::fixed << std::setprecision(2) << used_time
-        << " " << std::setw(7) << std::fixed << std::setprecision(2) << (cpuTimeTotal() - startTime)
-        << endl;
-    }
 }
 
 void Sampler::check_model(const vector<lbool>& model,
