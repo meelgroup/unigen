@@ -51,7 +51,9 @@ using std::string;
 using std::set;
 ApproxMC::AppMC* appmc = NULL;
 UniG* unigen = NULL;
-argparse::ArgumentParser program = argparse::ArgumentParser("unigen", UniGen::UniG::get_version_sha1(), argparse::default_arguments::help);
+argparse::ArgumentParser program = argparse::ArgumentParser("unigen",
+        UniGen::UniG::get_version_sha1(),
+        argparse::default_arguments::help);
 std::unique_ptr<CMSat::FieldGen> fg;
 
 uint32_t verb = 1;
