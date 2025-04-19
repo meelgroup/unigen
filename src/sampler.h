@@ -112,7 +112,7 @@ private:
     uint32_t startiter;
     uint32_t loThresh;
     uint32_t hiThresh;
-    uint32_t threshold_Samplergen;
+    uint32_t thresh_sampler_gen;
 
     Config conf;
     string gen_rnd_bits(const uint32_t size,

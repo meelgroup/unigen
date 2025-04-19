@@ -245,7 +245,8 @@ void Sampler::sample(Config _conf,
     randomEngine.seed(appmc->get_seed());
 
     /* Compute threshold via formula from TACAS-15 paper */
-    threshold_Samplergen = ceil(4.03 * (1 + (1/conf.kappa)) * (1 + (1/conf.kappa)));
+    thresh_sampler_gen = ceil(4.03 * (1 + (1/conf.kappa)) * (1 + (1/conf.kappa)));
+    verb_print(2, "[unig] threshold_Samplergen: " << thresh_sampler_gen);
 
     if (solCount.hashCount == 0 && solCount.cellSolCount == 0) {
         cout << "c o [unig] The input formula is unsatisfiable." << endl;
@@ -253,7 +254,7 @@ void Sampler::sample(Config _conf,
     }
 
     double si = round(solCount.hashCount + log2(solCount.cellSolCount)
-        + log2(1.8) - log2(threshold_Samplergen)) - 2;
+        + log2(1.8) - log2(thresh_sampler_gen)) - 2;
     cout << "si: " << si << endl;
     if (si > 0) startiter = si;
     else startiter = 0;   /* Indicate ideal sampling case */
@@ -301,8 +302,8 @@ void Sampler::simplify() {
 void Sampler::generate_samples(const uint32_t num_samples_needed) {
     double genStartTime = cpuTimeTotal();
 
-    hiThresh = ceil(1 + (1.4142136 * (1 + conf.kappa) * threshold_Samplergen));
-    loThresh = floor(threshold_Samplergen / (1.4142136 * (1 + conf.kappa)));
+    hiThresh = ceil(1 + (1.4142136 * (1 + conf.kappa) * thresh_sampler_gen));
+    loThresh = floor(thresh_sampler_gen / (1.4142136 * (1 + conf.kappa)));
     const uint32_t samplesPerCall = sols_to_return(num_samples_needed);
     const uint32_t callsNeeded =
         num_samples_needed / samplesPerCall + (bool)(num_samples_needed % samplesPerCall);

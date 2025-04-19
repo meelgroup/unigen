@@ -66,7 +66,6 @@ uint32_t reuse_models = 1;
 uint32_t sparse;
 
 // Arjun
-vector<uint32_t> sampling_vars;
 int do_arjun = 1;
 int debug_arjun = 0;
 int arjun_gates = 0;
@@ -290,7 +289,6 @@ int main(int argc, char** argv) {
 
     if (logfilename != "") {
         appmc->set_up_log(logfilename);
-        cout << "c o [appmc] Logfile set " << logfilename << endl;
     }
 
     vector<uint32_t> sampling_vars_orig;
@@ -326,8 +324,6 @@ int main(int argc, char** argv) {
         print_final_indep_set(appmc->get_sampl_vars(), appmc->get_sampl_vars().size());
     }
 
-    appmc->set_sampl_vars(sampling_vars);
-    check_sanity_sampling_vars(sampling_vars, appmc->nVars());
     auto sol_count_unig = appmc->count();
     auto sol_count_actual = sol_count_unig;
     sol_count_actual.hashCount += empty_sampl_vars.size();
@@ -338,17 +334,6 @@ int main(int argc, char** argv) {
     unigen->set_multisample(multisample);
     unigen->set_full_sampling_vars(sampling_vars_orig);
     unigen->set_empty_sampling_vars(empty_sampl_vars);
-
-    std::ofstream logfile;
-    if (logfilename != "") {
-        logfile.open(logfilename.c_str());
-        if (!logfile.is_open()) {
-            cout << "[Sampler] Cannot open Sampler log file '" << logfilename
-                 << "' for writing." << endl;
-            exit(1);
-        }
-        unigen->set_logfile(&logfile);
-    }
 
     void *myfile = &std::cout;
     std::ofstream sample_out;
