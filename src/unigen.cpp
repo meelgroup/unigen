@@ -27,9 +27,9 @@
  */
 
 #include "sampler.h"
+#include "GitSHA1.h"
 #include "config.h"
 #include <iostream>
-#include <fstream>
 using namespace ApproxMC;
 
 using std::cout;
@@ -92,9 +92,9 @@ DLL_PUBLIC void UniG::sample(
     data->sampler.sample(data->conf, *sol_count, num_samples);
 }
 
-DLL_PUBLIC string UniG::get_version_info()
+DLL_PUBLIC string UniG::get_version_sha1()
 {
-    return data->sampler.get_version_info();
+    return UnigenIntNS::get_version_sha1();
 }
 
 set_get_macro(double, kappa)

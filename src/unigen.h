@@ -59,7 +59,7 @@ class UniG
 public:
     UniG(ApproxMC::AppMC* appmc);
     ~UniG();
-    std::string get_version_info();
+    static std::string get_version_sha1();
     void sample(
         const ApproxMC::SolCount* sol_count,
         uint32_t num_samples);

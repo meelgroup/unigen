@@ -18,15 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_CXX_STANDARD 11)
-
-enable_language( CXX )
-
-include (GenerateExportHeader)
-include (GNUInstallDirs)
-
+cmake_minimum_required(VERSION 3.15 FATAL_ERROR)
 message(STATUS "LIB directory is '${CMAKE_INSTALL_LIBDIR}'")
 message(STATUS "BIN directory is '${CMAKE_INSTALL_BINDIR}'")
 
@@ -82,9 +74,17 @@ foreach (build_config ${build_types})
 endforeach()
 
 PROJECT(unigen)
+enable_language( CXX )
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # contains some library search cmake scripts
 SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
+include (GenerateExportHeader)
+include (GNUInstallDirs)
 
 # generate JSON file of compile commands -- useful for code extension
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
@@ -341,10 +341,10 @@ if (GIT_EXECUTABLE)
 else()
   set(GIT_SHA "GIT-hash-notfound")
 endif()
-set(unigen_FULL_VERSION "2.5.8")
+set(UNIGEN_FULL_VERSION "2.5.8")
 
-string(REPLACE "." ";" unigen_FULL_VERSION_LIST ${unigen_FULL_VERSION})
-SetVersionNumber("PROJECT" ${unigen_FULL_VERSION_LIST})
+string(REPLACE "." ";" UNIGEN_FULL_VERSION_LIST ${UNIGEN_FULL_VERSION})
+SetVersionNumber("PROJECT" ${UNIGEN_FULL_VERSION_LIST})
 MESSAGE(STATUS "PROJECT_VERSION: ${PROJECT_VERSION}")
 MESSAGE(STATUS "PROJECT_VERSION_MAJOR: ${PROJECT_VERSION_MAJOR}")
 MESSAGE(STATUS "PROJECT_VERSION_MINOR: ${PROJECT_VERSION_MINOR}")
@@ -356,21 +356,16 @@ MESSAGE(STATUS "PROJECT_VERSION_PATCH: ${PROJECT_VERSION_PATCH}")
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND NOT EMSCRIPTEN)
     find_program(HELP2MAN_FOUND help2man)
     if (HELP2MAN_FOUND)
-        ADD_CUSTOM_TARGET(man_unigen
-            ALL
-            DEPENDS unigen-bin
-        )
-
+        ADD_CUSTOM_TARGET(man_unigen ALL DEPENDS unigen-bin)
         ADD_CUSTOM_COMMAND(
+            POST_BUILD
             TARGET man_unigen
             COMMAND help2man
-            ARGS --version-string=${unigen_FULL_VERSION} --help-option="-h" $<TARGET_FILE:unigen-bin> -o ${CMAKE_CURRENT_BINARY_DIR}/unigen.1
+            ARGS --version-string=${UNIGEN_FULL_VERSION} --help-option="-h" $<TARGET_FILE:unigen-bin> -o ${CMAKE_CURRENT_BINARY_DIR}/unigen.1
         )
-
         INSTALL(
             FILES ${CMAKE_CURRENT_BINARY_DIR}/unigen.1
             DESTINATION ${CMAKE_INSTALL_PREFIX}/man/man1)
-
         message(STATUS "Manpage will be created and installed")
     else()
         MESSAGE(STATUS "Cannot find help2man, not creating manpage")
@@ -383,7 +378,6 @@ endif()
 get_directory_property( DirDefs DIRECTORY ${CMAKE_SOURCE_DIR} COMPILE_DEFINITIONS )
 set(COMPILE_DEFINES)
 foreach( d ${DirDefs} )
-    # message( STATUS "Found Define: " ${d} )
     set(COMPILE_DEFINES "${COMPILE_DEFINES} -D${d}")
 endforeach()
 message(STATUS "All defines at startup: ${COMPILE_DEFINES}")
@@ -413,10 +407,6 @@ endmacro()
 # -----------------------------------------------------------------------------
 # Dependencies
 # -----------------------------------------------------------------------------
-set(boost_components "")
-set(boost_components ${boost_components} program_options serialization)
-find_package( Boost 1.46 COMPONENTS ${boost_components})
-
 option(NOZLIB "Don't use zlib" OFF)
 if (NOT NOZLIB AND NOT (STATICCOMPILE AND WIN32))
     find_package(ZLIB)
@@ -429,55 +419,9 @@ if (NOT NOZLIB AND NOT (STATICCOMPILE AND WIN32))
         MESSAGE(STATUS "WARNING: Did not find ZLIB, gzipped file support will be disabled")
     ENDIF (ZLIB_FOUND)
 endif()
-
-find_package(GMP)
-if (GMP_FOUND)
-    message(STATUS "GMP dynamic lib: ${GMP_LIBRARY}")
-    message(STATUS "GMP include header location: ${GMP_INCLUDE_DIRS}")
-else()
-    message(FATAL_ERROR  "Cannot find GMP. Please install it! Exiting.")
-endif()
-
-find_package(cryptominisat5 CONFIG)
-if (cryptominisat5_FOUND)
-    message(STATUS "Found CryptoMiniSat 5.x")
-    message(STATUS "CryptoMiniSat5 dynamic lib: ${CRYPTOMINISAT5_LIBRARIES}")
-    message(STATUS "CryptoMiniSat5 static lib:  ${CRYPTOMINISAT5_STATIC_LIBRARIES}")
-    message(STATUS "CryptoMiniSat5 static lib deps: ${CRYPTOMINISAT5_STATIC_LIBRARIES_DEPS}")
-    message(STATUS "CryptoMiniSat5 include dirs: ${CRYPTOMINISAT5_INCLUDE_DIRS}")
-else()
-    message(FATAL_ERROR "Cannot find CryptoMiniSat5. Please install it! Exiting.")
-endif()
-
-find_package(arjun CONFIG)
-if (arjun_FOUND)
-    message(STATUS "Found Arjun")
-    message(STATUS "Arjun dynamic lib : ${ARJUN_LIBRARIES}")
-    message(STATUS "Arjun include dirs: ${ARJUN_INCLUDE_DIRS}")
-else()
-    message(FATAL_ERROR "Cannot find Arjun. Please install it! Exiting.")
-endif()
-
-find_package(louvain_communities CONFIG)
-if (louvain_communities_FOUND)
-    message(STATUS "Found Louvain Communities library")
-    message(STATUS "Louvain Communities dynamic lib: ${LOUVAIN_COMMUNITIES_LIBRARIES}")
-    message(STATUS "Louvain Communities include dirs: ${LOUVAIN_COMMUNITIES_INCLUDE_DIRS}")
-else()
-    message(WARNING "Cannot find Louvain Communities libraries.")
-endif()
-
-find_package(approxmc CONFIG)
-if (approxmc_FOUND)
-    message(STATUS "Found approxmc")
-    message(STATUS "ApproxMC dynamic lib: ${APPROXMC_LIBRARIES}")
-    message(STATUS "ApproxMC static lib:  ${APPROXMC_STATIC_LIBRARIES}")
-    message(STATUS "ApproxMC static lib deps: ${APPROXMC_STATIC_LIBRARIES_DEPS}")
-    message(STATUS "ApproxMC include dirs: ${APPROXMC_INCLUDE_DIRS}")
-else()
-    message(FATAL_ERROR "Cannot find ApproxMC. Please install it! Exiting.")
-endif()
-
+find_package(GMP REQUIRED)
+find_package(cryptominisat5 CONFIG REQUIRED)
+find_package(approxmc CONFIG REQUIRED)
 find_package(arjun CONFIG REQUIRED)
 
 # -----------------------------------------------------------------------------

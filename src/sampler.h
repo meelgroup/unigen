@@ -26,21 +26,13 @@ Sampler
  THE SOFTWARE.
  */
 
+#pragma once
 
-#ifndef Sampler_H_
-#define Sampler_H_
-
-#include <fstream>
 #include <random>
 #include <map>
 #include <cstdint>
-#ifdef CMS_LOCAL_BUILD
-#include "cryptominisat.h"
-#include "approxmc.h"
-#else
 #include <cryptominisat5/cryptominisat.h>
 #include <approxmc/approxmc.h>
-#endif
 #include "unigen.h"
 #include "config.h"
 
@@ -53,9 +45,7 @@ using ApproxMC::SolCount;
 using namespace CMSat;
 using namespace ApproxMC;
 
-
-struct SavedModel
-{
+struct SavedModel {
     SavedModel(uint32_t _hash_num, const vector<lbool>& _model) :
         model(_model),
         hash_num(_hash_num)
@@ -113,13 +103,13 @@ public:
         const uint32_t num_samples);
     AppMC* appmc;
     SATSolver* solver = NULL;
-    string get_version_info() const;
 
     ///What to call on samples
     UniGen::callback callback_func = NULL;
     void* callback_func_data = NULL;
 
 private:
+    uint32_t startiter;
     uint32_t loThresh;
     uint32_t hiThresh;
     uint32_t threshold_Samplergen;
@@ -200,6 +190,3 @@ private:
     double total_inter_simp_time = 0;
     uint32_t threshold; //precision, it's computed
 };
-
-
-#endif //Sampler_H_

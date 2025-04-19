@@ -25,15 +25,14 @@
  THE SOFTWARE.
  */
 
-#ifndef UNIGEN_CONFIG_H__
-#define UNIGEN_CONFIG_H__
+
+#pragma once
 
 #include <vector>
-#include <string>
 #include <cstdint>
+#include <fstream>
 
 struct Config {
-    uint32_t startiter = 0;
     unsigned verb = 1;
     unsigned verb_sampler_cls = 0;
     uint32_t multisample = 1;
@@ -43,5 +42,3 @@ struct Config {
     std::vector<uint32_t> full_sampling_vars;
     std::vector<uint32_t> empty_sampling_vars;
 };
-
-#endif
