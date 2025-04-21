@@ -101,7 +101,6 @@ set_get_macro(double, kappa)
 set_get_macro(bool, multisample)
 set_get_macro(bool, force_sol_extension)
 set_get_macro(const std::vector<uint32_t>&, full_sampling_vars)
-set_get_macro(const std::vector<uint32_t>&, empty_sampling_vars)
 set_get_macro(bool, verb_sampler_cls)
 
 DLL_PUBLIC void UniG::set_verbosity(uint32_t verb)

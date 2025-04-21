@@ -254,7 +254,7 @@ void Sampler::sample(Config _conf,
 
     double si = round(solCount.hashCount + log2(solCount.cellSolCount)
         + log2(1.8) - log2(thresh_sampler_gen)) - 2;
-    cout << "si: " << si << endl;
+    if (conf.verb > 3) cout << "c o si: " << si << endl;
     if (si > 0) startiter = si;
     else startiter = 0;   /* Indicate ideal sampling case */
 
@@ -426,17 +426,10 @@ uint32_t Sampler::gen_n_samples(
 
 vector<int> Sampler::get_solution_ints(const vector<lbool>& model) {
     vector<int> solution;
-    set<uint32_t> empty_set(
-            conf.empty_sampling_vars.begin(), conf.empty_sampling_vars.end());
     std::uniform_int_distribution<uint32_t> dist{0, 1};
     for(const uint32_t var: conf.full_sampling_vars) {
         assert(model[var] != l_Undef);
-        if (empty_set.count(var)) {
-            bool val = dist(randomEngine);
-            solution.push_back((var+1) * (val ? -1: 1));
-        } else {
-            solution.push_back(((model[var] != l_True) ? -1: 1) * ((int)var + 1));
-        }
+        solution.push_back(((model[var] != l_True) ? -1: 1) * ((int)var + 1));
     }
     return solution;
 }

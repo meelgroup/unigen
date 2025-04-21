@@ -38,5 +38,4 @@ struct Config {
     int force_sol_extension = 0;
     double kappa = 0.638;  /* Corresponds to UniGen's epsilon=16 in the TACAS-15 paper */
     std::vector<uint32_t> full_sampling_vars;
-    std::vector<uint32_t> empty_sampling_vars;
 };

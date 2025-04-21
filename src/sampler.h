@@ -147,7 +147,6 @@ private:
     ////////////////
     void print_xor(const vector<uint32_t>& vars, const uint32_t rhs);
     vector<int> get_solution_ints(const vector<lbool>& model);
-    void call_after_parse();
     void ban_one(const uint32_t act_var, const vector<lbool>& model);
     void check_model(
         const vector<lbool>& model,
@@ -163,7 +162,6 @@ private:
 
     void readInAFile(SATSolver* solver2, const string& filename);
     void readInStandardInput(SATSolver* solver2);
-
 
     //Data so we can output temporary count when catching the signal
     vector<uint64_t> numHashList;

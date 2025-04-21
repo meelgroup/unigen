@@ -284,9 +284,8 @@ int main(int argc, char** argv) {
     appmc->set_sparse(sparse);
     appmc->set_simplify(simplify);
     appmc->set_var_elim_ratio(var_elim_ratio);
-
     vector<uint32_t> sampling_vars_orig;
-    vector<uint32_t> empty_sampl_vars;
+
     const auto& files = program.get<std::vector<std::string>>("inputfile");
     if (files.empty()) {
       cout << "ERROR: you provided --inputfile but no file. Strange. Exiting. " << endl;
@@ -296,6 +295,7 @@ int main(int argc, char** argv) {
     ArjunNS::SimplifiedCNF cnf(fg);
     if (do_arjun) {
         parse_file(fname, &cnf);
+        sampling_vars_orig = cnf.sampl_vars;
         const auto orig_sampl_vars = cnf.sampl_vars;
         double my_time = cpuTime();
         ArjunNS::Arjun arjun;
@@ -315,19 +315,16 @@ int main(int argc, char** argv) {
         cout << "c o [arjun] Arjun finished. T: " << (cpuTime() - my_time) << endl;
     } else {
         parse_file(fname, appmc);
+        sampling_vars_orig = appmc->get_sampl_vars();
         print_final_indep_set(appmc->get_sampl_vars(), appmc->get_sampl_vars().size());
     }
 
     auto sol_count_unig = appmc->count();
-    auto sol_count_actual = sol_count_unig;
-    sol_count_actual.hashCount += empty_sampl_vars.size();
-
     unigen->set_verbosity(verb);
     unigen->set_verb_sampler_cls(verb_banning_cls);
     unigen->set_kappa(kappa);
     unigen->set_multisample(multisample);
     unigen->set_full_sampling_vars(sampling_vars_orig);
-    unigen->set_empty_sampling_vars(empty_sampl_vars);
 
     void *myfile = &std::cout;
     std::ofstream sample_out;

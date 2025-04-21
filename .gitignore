@@ -4,3 +4,5 @@ scalmc.kdev4
 .cache/
 compile_commands.json
 *.kdev4
+html/*.wasm
+html/*.js
