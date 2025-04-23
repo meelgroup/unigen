@@ -17,8 +17,6 @@ jobs:
         os: [ubuntu-latest, macos-14, ubuntu-24.04-arm, macos-13]
         build_type: [Release]
         staticcompile: [ON, OFF]
-        c_compiler: [gcc]
-        cpp_compiler: [g++]
 
     steps:
     - uses: actions/setup-python@v5
@@ -202,8 +200,6 @@ jobs:
         mkdir build
         cd build
         cmake \
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
-        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
         -DSTATICCOMPILE=${{ matrix.staticcompile }} \
         -DENABLE_TESTING=OFF \
@@ -224,8 +220,6 @@ jobs:
         mkdir build
         cd build
         cmake \
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
-        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
         -DSTATICCOMPILE=${{ matrix.staticcompile }} \
         -DENABLE_TESTING=OFF \
@@ -242,8 +236,6 @@ jobs:
         cd project
         mkdir -p build && cd build
         cmake \
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
-        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
         -DSTATICCOMPILE=${{ matrix.staticcompile }} \
         -S ..
