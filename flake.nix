@@ -91,6 +91,7 @@
               ./cmake
               ./src
               ./unigenConfig.cmake.in
+              ./pyproject.toml
             ];
           };
           nativeBuildInputs = [
