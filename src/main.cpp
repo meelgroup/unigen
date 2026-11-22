@@ -69,12 +69,7 @@ uint32_t sparse;
 
 // Arjun
 int do_arjun = 1;
-int arjun_gates = 0;
-int with_e = 1;
-int do_backbone = 1;
-ArjunNS::SimpConf simp_conf;
-ArjunNS::Arjun::ElimToFileConf etof_conf;
-ArjunNS::Arjun::InterpConf iconf;
+UniGen::ArjunConf aconf;
 
 // UniGen
 uint32_t num_samples = 500;
@@ -121,7 +116,7 @@ void add_unigen_options() {
     seed = tmp.get_seed();
 
     myopt2("-v", "--verb", verb, atoi, "Verbosity");
-    program.add_argument("-v", "--version") \
+    program.add_argument("--version") \
         .action([&](const auto&) {print_version(); exit(0);}) \
         .flag()
         .help("Print version and exit");
@@ -138,15 +133,15 @@ void add_unigen_options() {
     myopt("--kappa", kappa, atof, "Uniformity parameter (see TACAS-15 paper)");
 
     myopt("--arjun", do_arjun, atoi, "Use arjun to minimize sampling set");
-    myopt("--withe", with_e, atoi, "With --arjun: also simplify the CNF, eliminating vars. "
+    myopt("--withe", aconf.elim, atoi, "With --arjun: also simplify the CNF, eliminating vars. "
             "Samples are mapped back to the input via Arjun's definitions of the removed vars");
-    myopt("--backbone", do_backbone, atoi, "With --arjun: run backbone analysis first");
-    myopt("--sbva", etof_conf.num_sbva_steps, atoi, "With --withe: SBVA steps (in 1000s)");
-    myopt("--eappmc", simp_conf.appmc, atoi, "With --withe: simplify for ApproxMC's XOR hashing");
-    myopt("--evivif", simp_conf.oracle_vivify, atoi, "With --withe: oracle vivification");
-    myopt("--eiter1", simp_conf.iter1, atoi, "With --withe: simplification iterations, 1st round");
-    myopt("--eiter2", simp_conf.iter2, atoi, "With --withe: simplification iterations, 2nd round");
-    myopt("--autarky", etof_conf.do_autarky, atoi, "With --withe: autarky");
+    myopt("--backbone", aconf.backbone, atoi, "With --arjun: run backbone analysis first");
+    myopt("--sbva", aconf.etof.num_sbva_steps, atoi, "With --withe: SBVA steps (in 1000s)");
+    myopt("--eappmc", aconf.simp.appmc, atoi, "With --withe: simplify for ApproxMC's XOR hashing");
+    myopt("--evivif", aconf.simp.oracle_vivify, atoi, "With --withe: oracle vivification");
+    myopt("--eiter1", aconf.simp.iter1, atoi, "With --withe: simplification iterations, 1st round");
+    myopt("--eiter2", aconf.simp.iter2, atoi, "With --withe: simplification iterations, 2nd round");
+    myopt("--autarky", aconf.etof.do_autarky, atoi, "With --withe: autarky");
     myopt("--fullsol", full_sol, atoi, "Print a value for every var of the input, not only the sampling set");
     myopt("--sparse", sparse, atoi, "Generate sparse XORs when possible");
     myopt("--reusemodels", reuse_models, atoi, "Reuse models while counting solutions");
@@ -202,92 +197,25 @@ template<class T> void parse_file(const std::string& filename, T* reader) {
     vector<uint32_t> tmp;
     for(uint32_t i = 0; i < reader->nVars(); i++) tmp.push_back(i);
     reader->set_sampl_vars(tmp);
-    etof_conf.all_indep = true;
   } else {
-    // Check if CNF has all vars as indep. Then its's all_indep
-    set<uint32_t> tmp;
     for(auto const& s: reader->get_sampl_vars()) {
       if (s >= reader->nVars()) {
         cout << "ERROR: Sampling var " << s+1 << " is larger than number of vars in formula: "
           << reader->nVars() << endl;
         exit(-1);
       }
-      tmp.insert(s);
     }
-    if (tmp.size() == reader->nVars()) etof_conf.all_indep = true;
     if (!reader->get_opt_sampl_vars_set()) {
       reader->set_opt_sampl_vars(reader->get_sampl_vars());
     }
   }
 }
 
-struct SampleOut {
-    std::ostream* os;
-    vector<uint32_t> print_vars;
-    // Arjun's simplified CNF, when samples are of it and must be mapped back
-    const ArjunNS::SimplifiedCNF* cnf = nullptr;
-    vector<CMSat::Lit> orig_to_new;
-    vector<ArjunNS::aig_lit> defs;
-    vector<vector<Lit>> input_cls;
-    std::mt19937 rnd;
-};
-
-// Arjun's definitions are not always right: never print a sample that is not a solution
-void check_vals(const vector<lbool>& vals, const SampleOut& out) {
-    for(const auto& cl: out.input_cls) {
-        bool sat = false;
-        for(const auto& l: cl) if ((vals[l.var()] ^ l.sign()) == l_True) { sat = true; break; }
-        if (!sat) {
-            cout << "ERROR: extended sample falsifies input clause " << cl
-                << ". Arjun gave a wrong definition, this is a bug. Try --withe 0" << endl;
-            exit(-1);
-        }
-    }
-}
-
-void print_vals(const vector<lbool>& vals, SampleOut& out) {
-    for(const uint32_t v: out.print_vars) {
-        assert(vals[v] != l_Undef);
-        (*out.os) << (vals[v] == l_True ? "" : "-") << v+1 << " ";
-    }
-    (*out.os) << "0" << endl;
-}
-
-// solution is over all vars of the simplified CNF, in order
-vector<lbool> extend_to_orig(const std::vector<int>& solution, SampleOut& out) {
-    vector<lbool> vals(out.defs.size(), l_Undef);
-    for(uint32_t o = 0; o < vals.size(); o++) {
-        const Lit n = out.orig_to_new[o];
-        if (n != lit_Undef) {
-            assert(n.var() < solution.size() && std::abs(solution[n.var()]) == (int)n.var()+1);
-            vals[o] = boolToLBool(solution[n.var()] > 0) ^ n.sign();
-        } else if (out.defs[o] == nullptr) {
-            // in no clause of the input, or a sampling var Arjun took out into the
-            // multiplier: either way, every value of it is part of a solution
-            vals[o] = boolToLBool(out.rnd() & 1);
-        }
-    }
-    std::map<ArjunNS::aig_lit, lbool> cache;
-    for(uint32_t o = 0; o < vals.size(); o++) {
-        if (out.orig_to_new[o] != lit_Undef || out.defs[o] == nullptr) continue;
-        vals[o] = ArjunNS::AIG::evaluate(vals, out.defs[o], out.defs, cache);
-        assert(vals[o] != l_Undef);
-    }
-    return vals;
-}
-
 void mycallback(const std::vector<int>& solution, void *data)
 {
-    SampleOut& out = *(SampleOut*)data;
-    if (out.cnf) {
-        const auto vals = extend_to_orig(solution, out);
-        check_vals(vals, out);
-        print_vals(vals, out);
-        return;
-    }
-    vector<lbool> vals(appmc->nVars(), l_Undef);
-    for(const int l: solution) vals[std::abs(l)-1] = boolToLBool(l > 0);
-    print_vals(vals, out);
+    std::ostream& os = *(std::ostream*)data;
+    for(const int l: solution) os << l << " ";
+    os << "0" << endl;
 }
 
 inline double stats_line_percent(double num, double total)
@@ -342,11 +270,6 @@ int main(int argc, char** argv) {
     fg = std::make_unique<ArjunNS::FGenMpz>();
     appmc = new ApproxMC::AppMC(fg);
     unigen = new UniG(appmc);
-    simp_conf.appmc = true;
-    simp_conf.oracle_sparsify = false;
-    simp_conf.iter1 = 2;
-    simp_conf.iter2 = 0;
-    etof_conf.do_extend_indep = false;
     parse_supported_options(argc, argv);
     if (verb) {
         print_version();
@@ -368,92 +291,42 @@ int main(int argc, char** argv) {
     }
     const string fname(files[0]);
     ArjunNS::SimplifiedCNF cnf(fg);
-    SampleOut out;
-    out.rnd.seed(seed);
-    vector<uint32_t> full_sampling_vars;
+    unigen->set_verbosity(verb);
     if (do_arjun) {
         cnf.set_need_aig();
         parse_file(fname, &cnf);
         const uint32_t orig_nvars = cnf.nVars();
         sampling_vars_orig = cnf.get_sampl_vars();
-        out.input_cls = cnf.get_clauses();
-        {
-            // Arjun's definitions need a satisfiable input
-            SATSolver s;
-            s.new_vars(cnf.nVars());
-            for(const auto& c: cnf.get_clauses()) s.add_clause(c);
-            if (s.solve() == l_False) {
-                cout << "c o [unig] The input formula is unsatisfiable." << endl;
-                exit(-1);
-            }
+        const double my_time = cpuTime();
+        if (!unigen->simplify_with_arjun(cnf, aconf)) {
+            cout << "c o [unig] The input formula is unsatisfiable." << endl;
+            exit(-1);
         }
-        double my_time = cpuTime();
-        ArjunNS::Arjun arjun;
-        arjun.set_verb(verb);
-        arjun.set_seed(seed);
-        arjun.set_or_gate_based(arjun_gates);
-        arjun.set_xor_gates_based(arjun_gates);
-        arjun.set_ite_gate_based(arjun_gates);
-        arjun.set_irreg_gate_based(arjun_gates);
-        if (do_backbone) arjun.standalone_backbone(cnf);
-        const auto info = arjun.standalone_minimize_indep_info(cnf, iconf, etof_conf.all_indep);
-        // Free in the projection, so Arjun multiplies them out, but they are
-        // still in the clauses: their values must come from the sampler too
-        set<uint32_t> sampl(cnf.get_sampl_vars().begin(), cnf.get_sampl_vars().end());
-        for(const auto& v: info.free_vars) {
-            if (v >= cnf.nVars() || sampl.count(v)) {
-                cout << "ERROR: Arjun gave a wrong free var: " << v+1 << endl;
-                exit(-1);
-            }
-            sampl.insert(v);
-        }
-        if (!info.free_vars.empty()) cnf.set_multiplier_weight(fg->one());
-        // The independent support is the input of Arjun's definitions, not the
-        // input's sampling set: Arjun only keeps defs of vars the inputs define,
-        // and needs every opt sampling var to be an input or defined
-        cnf.set_sampl_vars(sampl, true);
-        cnf.set_opt_sampl_vars(sampl);
-        cnf.set_orig_clauses(cnf.get_clauses());
-        cnf.set_orig_sampl_vars(cnf.get_sampl_vars());
-        auto etof = etof_conf;
-        etof.all_indep = false;
-        if (with_e) arjun.standalone_elim_to_file(cnf, etof, simp_conf, iconf);
-        appmc->new_vars(cnf.nVars());
-        appmc->set_sampl_vars(cnf.get_sampl_vars());
-        for(const auto& c: cnf.get_clauses()) appmc->add_clause(c);
-        for(const auto& c: cnf.get_red_clauses()) appmc->add_red_clause(c);
-        appmc->set_multiplier_weight(cnf.get_multiplier_weight());
-        print_final_indep_set(cnf.get_sampl_vars(), sampling_vars_orig.size());
+        print_final_indep_set(appmc->get_sampl_vars(), sampling_vars_orig.size());
         cout << "c o [arjun] Arjun finished. T: " << (cpuTime() - my_time) << endl;
-
-        out.cnf = &cnf;
-        out.defs.resize(cnf.num_defs());
-        for(uint32_t v = 0; v < cnf.num_defs(); v++) out.defs[v] = cnf.get_def(v);
-        out.orig_to_new.assign(cnf.num_defs(), lit_Undef);
-        for(const auto& [o, n]: cnf.get_orig_to_new_var()) out.orig_to_new[o] = n;
-        for(uint32_t v = 0; v < cnf.nVars(); v++) full_sampling_vars.push_back(v);
-        if (full_sol) for(uint32_t v = 0; v < orig_nvars; v++) out.print_vars.push_back(v);
-        else out.print_vars = sampling_vars_orig;
+        if (full_sol) {
+            vector<uint32_t> all;
+            for(uint32_t v = 0; v < orig_nvars; v++) all.push_back(v);
+            unigen->set_full_sampling_vars(all);
+        }
     } else {
         parse_file(fname, appmc);
         sampling_vars_orig = appmc->get_sampl_vars();
         print_final_indep_set(appmc->get_sampl_vars(), appmc->get_sampl_vars().size());
-        out.print_vars = sampling_vars_orig;
+        vector<uint32_t> print_vars = sampling_vars_orig;
         if (full_sol) {
-            out.print_vars.clear();
-            for(uint32_t v = 0; v < appmc->nVars(); v++) out.print_vars.push_back(v);
+            print_vars.clear();
+            for(uint32_t v = 0; v < appmc->nVars(); v++) print_vars.push_back(v);
         }
-        full_sampling_vars = out.print_vars;
+        unigen->set_full_sampling_vars(print_vars);
     }
 
     auto sol_count_unig = appmc->count();
-    unigen->set_verbosity(verb);
     unigen->set_verb_sampler_cls(verb_banning_cls);
     unigen->set_kappa(kappa);
     unigen->set_multisample(multisample);
-    unigen->set_full_sampling_vars(full_sampling_vars);
 
-    out.os = &std::cout;
+    std::ostream* os = &std::cout;
     std::ofstream sample_out;
     if (sample_fname != "") {
         sample_out.open(sample_fname.c_str());
@@ -462,9 +335,9 @@ int main(int argc, char** argv) {
                  << "' for writing." << endl;
             exit(-1);
         }
-        out.os = &sample_out;
+        os = &sample_out;
     }
-    unigen->set_callback(mycallback, &out);
+    unigen->set_callback(mycallback, os);
     unigen->sample(&sol_count_unig, num_samples);
 
     delete unigen;

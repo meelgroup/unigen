@@ -33,6 +33,7 @@
 #include <vector>
 #include <functional>
 #include <cryptominisat5/cryptominisat.h>
+#include <arjun/arjun.h>
 
 namespace ApproxMC {
     class AppMC;
@@ -42,6 +43,23 @@ namespace ApproxMC {
 namespace UniGen {
 
 typedef std::function<void(const std::vector<int>& solution, void* data)> callback;
+
+struct ArjunConf {
+    ArjunConf() {
+        simp.appmc = true;
+        simp.oracle_sparsify = false;
+        simp.iter1 = 2;
+        simp.iter2 = 0;
+        etof.do_extend_indep = false;
+    }
+    bool backbone = true;
+    bool gates = false;
+    // Also simplify the CNF, eliminating vars, not only minimize the sampling set
+    bool elim = true;
+    ArjunNS::SimpConf simp;
+    ArjunNS::Arjun::ElimToFileConf etof;
+    ArjunNS::Arjun::InterpConf iconf;
+};
 
 struct UniGenPrivateData;
 #ifdef _WIN32
@@ -54,6 +72,13 @@ public:
     UniG(ApproxMC::AppMC* appmc);
     ~UniG();
     static std::string get_version_sha1();
+
+    // Simplifies cnf with Arjun and gives the result to the AppMC object, whose
+    // samples are then mapped back to cnf's vars: the callback gets values of
+    // the vars set_full_sampling_vars() names, by default cnf's sampling set.
+    // cnf must be set_need_aig() before its vars are added.
+    // Returns false if cnf is unsatisfiable.
+    bool simplify_with_arjun(ArjunNS::SimplifiedCNF& cnf, const ArjunConf& conf = ArjunConf());
     void sample(
         const ApproxMC::SolCount* sol_count,
         uint32_t num_samples);
@@ -61,23 +86,18 @@ public:
     //Misc options -- do NOT to change unless you know what you are doing!
     void set_kappa(double kappa);
     void set_multisample(bool multisample);
-    void set_only_indep_samples(bool only_indep_samples);
     void set_verb_sampler_cls(bool verb_sampler_cls);
     void set_force_sol_extension(bool force_sol_extension);
     void set_verbosity(uint32_t verb);
     void set_callback(UniGen::callback f, void* data);
     void set_full_sampling_vars(const std::vector<uint32_t>& vars);
-    void set_empty_sampling_vars(const std::vector<uint32_t>& vars);
 
     //Querying default values
     double get_kappa() const;
     bool get_multisample() const;
-    bool get_only_indep_samples() const;
     bool get_verb_sampler_cls() const;
     bool get_force_sol_extension() const;
-    bool get_verb_banning_cls() const;
     const std::vector<uint32_t>& get_full_sampling_vars() const;
-    const std::vector<uint32_t>& get_empty_sampling_vars() const;
 
 private:
     ////////////////////////////

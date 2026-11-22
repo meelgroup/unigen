@@ -56,6 +56,7 @@ target_include_directories(unigen
 target_link_libraries(unigen
   PUBLIC
     approxmc
+    arjun
 )
 
 add_executable(unigen-bin main.cpp ${unigen_lib_files})
