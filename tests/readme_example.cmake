@@ -1,0 +1,13 @@
+# Fails if README.md's library example is not tests/library_example.cpp
+file(READ "${README}" readme)
+file(READ "${EXAMPLE}" example)
+string(FIND "${readme}" "## Library Use" at)
+string(SUBSTRING "${readme}" ${at} -1 readme)
+string(FIND "${readme}" "```cpp\n" start)
+math(EXPR start "${start} + 7")
+string(SUBSTRING "${readme}" ${start} -1 readme)
+string(FIND "${readme}" "```" end)
+string(SUBSTRING "${readme}" 0 ${end} code)
+if(NOT code STREQUAL example)
+    message(FATAL_ERROR "README.md's library example differs from ${EXAMPLE}")
+endif()

@@ -56,7 +56,8 @@ the variables it removed. By default only the sampling set is printed; with
 full solution of the input CNF.
 
 ## Library Use
-Below is an example library use:
+UniGen simplifies the CNF with all of Arjun, samples the simplified CNF, and
+maps every sample back to the input's variables:
 ```cpp
 #include <unigen/unigen.h>
 #include <approxmc/approxmc.h>
@@ -65,32 +66,44 @@ Below is an example library use:
 #include <memory>
 #include <vector>
 using std::vector;
-using namespace CMSat;
+using CMSat::Lit;
 
-void mycallback(const vector<int>& solution, void*) {
-    for (const int lit: solution) std::cout << lit << " ";
+void print_sample(const vector<int>& sample, void*) {
+    for (const int lit: sample) std::cout << lit << " ";
     std::cout << "0" << std::endl;
 }
 
 int main() {
-    std::unique_ptr<FieldGen> fg = std::make_unique<ArjunNS::FGenMpz>();
+    std::unique_ptr<CMSat::FieldGen> fg = std::make_unique<ArjunNS::FGenMpz>();
+    ArjunNS::SimplifiedCNF cnf(fg);
+    cnf.set_need_aig();
+    cnf.new_vars(4);
+    cnf.add_clause({Lit(0, false), Lit(1, false)}); // x1 v x2
+    cnf.add_clause({Lit(2, true), Lit(3, false)});  // -x3 v x4
+    cnf.add_clause({Lit(3, true), Lit(0, false)});  // -x4 v x1
+    cnf.set_sampl_vars(vector<uint32_t>{0, 1, 2});
+
     ApproxMC::AppMC appmc(fg);
     UniGen::UniG unigen(&appmc);
-    unigen.set_callback(mycallback, nullptr);
-
-    appmc.new_vars(3);
-    appmc.add_clause({Lit(0, true), Lit(1, true)});
-    appmc.set_sampl_vars({0, 1, 2});
-
-    auto sol_count = appmc.count();
+    unigen.set_callback(print_sample, nullptr);
+    if (!unigen.simplify_with_arjun(cnf)) {
+        std::cout << "UNSAT" << std::endl;
+        return 1;
+    }
+    // x4 is not sampled: its value comes from Arjun's definition of it
+    unigen.set_full_sampling_vars({0, 1, 2, 3});
+    const auto sol_count = appmc.count();
     unigen.sample(&sol_count, 5);
     return 0;
 }
 ```
 
 ## Guarantees
-UniGen ensures that the generated distribution is within
-(1+\epsilon)-multiplicative factor of the ideal uniform distribution.
+UniGen ensures that the generated distribution is within a
+(1+ε)-multiplicative factor of the ideal uniform distribution: every solution
+is generated with probability between 1/((1+ε)·N) and (1+ε)/N, where N is the
+number of solutions over the sampling set. ε is set via `--kappa` (the default
+0.638 gives ε=16); it is not `--epsilon`, which is the counting tolerance.
 
 ## Issues, questions, bugs, etc.
 Please click on "issues" at the top and [create a new
