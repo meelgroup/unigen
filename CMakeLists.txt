@@ -18,25 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.15 FATAL_ERROR)
-message(STATUS "LIB directory is '${CMAKE_INSTALL_LIBDIR}'")
-message(STATUS "BIN directory is '${CMAKE_INSTALL_BINDIR}'")
-
-if(POLICY CMP0022)
-    cmake_policy(SET CMP0022 NEW)
-endif()
-
-if(POLICY CMP0048)
-    cmake_policy(SET CMP0048 NEW)
-endif()
-
-if(POLICY CMP0046)
-    cmake_policy(SET CMP0046 NEW)
-endif()
-
-if(POLICY CMP0026)
-    cmake_policy(SET CMP0026 NEW)
-endif()
+cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 
 # -----------------------------------------------------------------------------
 # Make RelWithDebInfo the default build type if otherwise not set
@@ -60,41 +42,70 @@ message(STATUS "Doing a ${CMAKE_BUILD_TYPE} build")
 
 # Filter out definition of NDEBUG from the default build configuration flags.
 # We will add this ourselves if we want to disable assertions
-foreach (build_config ${build_types})
+foreach(build_config ${build_types})
     string(TOUPPER ${build_config} upper_case_build_config)
-    foreach (language CXX C)
+    foreach(language CXX C)
         set(VAR_TO_MODIFY "CMAKE_${language}_FLAGS_${upper_case_build_config}")
         string(REGEX REPLACE "(^| )[/-]D *NDEBUG($| )"
                              " "
                              replacement
                              "${${VAR_TO_MODIFY}}")
-        #message("Original (${VAR_TO_MODIFY}) is ${${VAR_TO_MODIFY}} replacement is ${replacement}")
         set(${VAR_TO_MODIFY} "${replacement}" CACHE STRING "Default flags for ${build_config} configuration" FORCE)
     endforeach()
 endforeach()
 
-PROJECT(unigen)
-enable_language( CXX )
+set(CMAKE_FIND_PACKAGE_NO_PACKAGE_REGISTRY ON)
+set(CMAKE_EXPORT_PACKAGE_REGISTRY OFF)
+project(unigen)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+include(GenerateExportHeader)
+include(GNUInstallDirs)
+
+message(STATUS "LIB directory is '${CMAKE_INSTALL_LIBDIR}'")
+message(STATUS "BIN directory is '${CMAKE_INSTALL_BINDIR}'")
 
 # contains some library search cmake scripts
-SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-
-include (GenerateExportHeader)
-include (GNUInstallDirs)
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 # generate JSON file of compile commands -- useful for code extension
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
+# static compilation
+option(BUILD_SHARED_LIBS "Build the shared library" ON)
+# STATIC_BINARY: link the unigen executable fully statically. Defaults to ON
+# with BUILD_SHARED_LIBS=OFF, but can be turned off independently.
+if(NOT BUILD_SHARED_LIBS)
+    option(STATIC_BINARY "Link the unigen binary fully statically" ON)
+else()
+    option(STATIC_BINARY "Link the unigen binary fully statically" OFF)
+endif()
+
 set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package (Threads REQUIRED)
-find_package(sbva CONFIG REQUIRED)
+find_package(Threads REQUIRED)
+
+if((${CMAKE_SYSTEM_NAME} MATCHES "Linux") OR (${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
+    if(STATIC_BINARY AND ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+        message(STATUS "Linking unigen binary fully statically")
+        set(CMAKE_EXE_LINKER_FLAGS
+            "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
+
+        # CMake probes the compiler without -static, so its captured
+        # CMAKE_<LANG>_IMPLICIT_LINK_LIBRARIES name the *shared* libgcc/libatomic
+        # variants (gcc_s, gcc_s_asneeded, atomic_asneeded) whose .a counterparts
+        # don't exist. Under -static -static-libgcc -static-libstdc++ the gcc/clang
+        # driver links libgcc.a + libgcc_eh.a + libstdc++.a itself, so we don't
+        # need CMake to re-inject anything. Clear both lists outright rather than
+        # playing whack-a-mole with distro-specific names.
+        set(CMAKE_C_IMPLICIT_LINK_LIBRARIES   "")
+        set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
+    endif()
+endif()
 
 option(SANITIZE "Use Clang sanitizers. You MUST use clang++ as the compiler for this to work" OFF)
-if (SANITIZE)
+if(SANITIZE)
     message(WARNING " --Using clang sanitizers -- you MUST use clang++ or the compile WILL fail")
     add_compile_options("-fsanitize=address")
     add_link_options("-fsanitize=address")
@@ -116,7 +127,7 @@ macro(add_cxx_flag_if_supported flagname)
   check_cxx_compiler_flag("${flagname}" HAVE_FLAG_${flagname})
 
   if(HAVE_FLAG_${flagname})
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${flagname}" )
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${flagname}")
   endif()
 endmacro()
 
@@ -126,40 +137,26 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     set(ENABLE_ASSERTIONS OFF)
 endif()
 
-if (ENABLE_ASSERTIONS)
+if(ENABLE_ASSERTIONS)
     # NDEBUG was already removed.
 else()
     # Note this definition doesn't appear in the cache variables.
-    add_definitions(-DNDEBUG)
+    add_compile_definitions(NDEBUG)
     add_cxx_flag_if_supported("-fno-stack-protector")
-    add_definitions(-D_FORTIFY_SOURCE=0)
-endif()
-
-# static compilation
-option(BUILD_SHARED_LIBS "Build the shared library" ON)
-option(STATICCOMPILE "Same as BUILD_SHARED_LIBS=OFF" OFF)
-if (STATICCOMPILE)
-    set(BUILD_SHARED_LIBS OFF)
-endif()
-if(NOT BUILD_SHARED_LIBS)
-    option(STATIC_BINARY "Link the unigen binary fully statically" ON)
-else()
-    option(STATIC_BINARY "Link the unigen binary fully statically" OFF)
+    add_compile_definitions(_FORTIFY_SOURCE=0)
 endif()
 
 
 # Note: O3 gives slight speed increase, 1 more solved from SAT Comp'14 @ 3600s
-if (NOT MSVC)
-    add_compile_options( -g)
-    add_compile_options( -pthread )
+if(NOT MSVC)
+    add_compile_options(-g)
 
-    add_compile_options("$<$<CONFIG:RELWITHDEBINFO>:-O3>")
+    add_compile_options("$<$<CONFIG:RelWithDebInfo>:-O3>")
 
-    add_compile_options("$<$<CONFIG:RELEASE>:-O3>")
-    add_compile_options("$<$<CONFIG:RELEASE>:-g0>")
-    add_compile_options("$<$<CONFIG:RELEASE>:-DNDEBUG>")
+    add_compile_options("$<$<CONFIG:Release>:-O3>")
+    add_compile_options("$<$<CONFIG:Release>:-g0>")
 
-    add_compile_options("$<$<CONFIG:DEBUG>:-O0>")
+    add_compile_options("$<$<CONFIG:Debug>:-O0>")
 
 else()
     # see https://msdn.microsoft.com/en-us/library/fwkeyyhe.aspx for details
@@ -170,27 +167,26 @@ else()
     add_compile_options("$<$<CONFIG:RELWITHDEBINFO>:/ZI>")
 
     add_compile_options("$<$<CONFIG:RELEASE>:/Ox>")
-    add_compile_options("$<$<CONFIG:RELEASE>:/D>")
-    add_compile_options("$<$<CONFIG:RELEASE>:/NDEBUG>")
+    add_compile_options("$<$<CONFIG:RELEASE>:/DNDEBUG>")
     add_compile_options("$<$<CONFIG:RELEASE>:/ZI>")
 
     add_compile_options("$<$<CONFIG:DEBUG>:/Od>")
 
-    if (STATIC_BINARY)
+    if(NOT BUILD_SHARED_LIBS)
         # We statically link to reduce dependencies
         foreach(flag_var CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
             # /MD -- Causes the application to use the multithread-specific and DLL-specific version of the run-time library.
             #        Defines _MT and _DLL and causes the compiler to place the library name MSVCRT.lib into the .obj file.
             if(${flag_var} MATCHES "/MD")
                 string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
-            endif(${flag_var} MATCHES "/MD")
+            endif()
 
             # /MDd	-- Defines _DEBUG, _MT, and _DLL and causes the application to use the debug multithread-specific and DLL-specific version of the run-time library.
             #          It also causes the compiler to place the library name MSVCRTD.lib into the .obj file.
             if(${flag_var} MATCHES "/MDd")
                 string(REGEX REPLACE "/MDd" "/MTd" ${flag_var} "${${flag_var}}")
-            endif(${flag_var} MATCHES "/MDd")
-        endforeach(flag_var)
+            endif()
+        endforeach()
 
         # Creates a multithreaded executable (static) file using LIBCMT.lib.
         add_compile_options(/MT)
@@ -221,28 +217,23 @@ else()
     # exception handling. c = If used with s (/EHsc), catches C++ exceptions only and tells the compiler to assume that functions declared as extern "C" never throw a C++ exception.
     add_compile_options(/EHsc)
 
-
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /INCREMENTAL:NO")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /PDBCOMPRESS")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:1572864")
 
-    #what does this do?
     set(DEF_INSTALL_CMAKE_DIR CMake)
 endif()
 
 option(ENABLE_TESTING "Enable testing" OFF)
-option(COVERAGE "Build with coverage check" OFF)
-if (COVERAGE AND NOT STATIC_BINARY)
-    MESSAGE(FATAL_ERROR "Coverage can only be computed on static compilation")
-endif()
 
-if (NOT WIN32)
+if(NOT WIN32)
     add_cxx_flag_if_supported("-Wall")
     add_cxx_flag_if_supported("-Wextra")
     add_cxx_flag_if_supported("-Wunused")
     add_cxx_flag_if_supported("-Wsign-compare")
-    if (NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+    if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
         add_cxx_flag_if_supported("-fno-omit-frame-pointer")
+        add_cxx_flag_if_supported("-g")
     endif()
     add_cxx_flag_if_supported("-Wtype-limits")
     add_cxx_flag_if_supported("-Wuninitialized")
@@ -250,49 +241,18 @@ if (NOT WIN32)
     add_cxx_flag_if_supported("-Wstrict-aliasing")
     add_cxx_flag_if_supported("-Wpointer-arith")
     add_cxx_flag_if_supported("-Wheader-guard")
-    if(NOT ENABLE_TESTING AND ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND NOT COVERAGE)
+    add_cxx_flag_if_supported("-msse4.2")
+    if(NOT ENABLE_TESTING AND ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         add_cxx_flag_if_supported("-fvisibility=hidden")
     endif()
-    add_cxx_flag_if_supported("-Wpointer-arith")
     add_cxx_flag_if_supported("-Wformat-nonliteral")
     add_cxx_flag_if_supported("-Winit-self")
     add_cxx_flag_if_supported("-Wparentheses")
     add_cxx_flag_if_supported("-Wunreachable-code")
-    add_cxx_flag_if_supported("-g")
-    add_compile_options("-fPIC")
-
-    # add_cxx_flag_if_supported("-flto") # slow compile and not enough benefits
-    #add_cxx_flag_if_supported("-fno-exceptions")
 endif()
 
-if (COVERAGE)
-    add_compile_options("--coverage")
-    SET(CMAKE_EXE_LINKER_FLAGS "--coverage")
-endif()
-
-
-# -----------------------------------------------------------------------------
-# Perhaps not needed?
-# -----------------------------------------------------------------------------
-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    set(CMAKE_EXE_LINKER_FLAGS " ${CMAKE_EXE_LINKER_FLAGS} -Wl,--discard-all -Wl,--build-id=sha1")
-endif()
-
-
-# -----------------------------------------------------------------------------
-# Staticcompile on Linux
-# -----------------------------------------------------------------------------
-if(NOT BUILD_SHARED_LIBS)
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so" ".dylib")
-endif()
-if(STATIC_BINARY AND ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    message(STATUS "Linking unigen binary fully statically")
-    set(CMAKE_EXE_LINKER_FLAGS
-        "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
-    # CMake's implicit link libs name the shared libgcc/libatomic variants, whose
-    # .a counterparts don't exist; under -static the driver links libgcc.a itself
-    set(CMAKE_C_IMPLICIT_LINK_LIBRARIES   "")
-    set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
+if((NOT WIN32) AND (NOT ENABLE_TESTING))
+    add_cxx_flag_if_supported("-fvisibility=hidden")
 endif()
 
 set(DEF_INSTALL_CMAKE_DIR lib/cmake/unigen)
@@ -311,62 +271,60 @@ function(SetVersionNumber PREFIX VERSION_MAJOR VERSION_MINOR VERSION_PATCH)
         PARENT_SCOPE)
 endfunction()
 
-find_program (GIT_EXECUTABLE git)
-if (GIT_EXECUTABLE)
-  include(GetGitRevisionDescription)
-  get_git_head_revision(GIT_REFSPEC GIT_SHA1)
-  MESSAGE(STATUS "GIT hash found: ${GIT_SHA1}")
-else()
-  set(GIT_SHA "GIT-hash-notfound")
-endif()
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/GetGitSHA1.cmake")
+get_git_sha1(GIT_SHA1)
+message(STATUS "GIT hash found: ${GIT_SHA1}")
 set(UNIGEN_FULL_VERSION "2.7.0")
 
 string(REPLACE "." ";" UNIGEN_FULL_VERSION_LIST ${UNIGEN_FULL_VERSION})
 SetVersionNumber("PROJECT" ${UNIGEN_FULL_VERSION_LIST})
-MESSAGE(STATUS "PROJECT_VERSION: ${PROJECT_VERSION}")
-MESSAGE(STATUS "PROJECT_VERSION_MAJOR: ${PROJECT_VERSION_MAJOR}")
-MESSAGE(STATUS "PROJECT_VERSION_MINOR: ${PROJECT_VERSION_MINOR}")
-MESSAGE(STATUS "PROJECT_VERSION_PATCH: ${PROJECT_VERSION_PATCH}")
+message(STATUS "PROJECT_VERSION: ${PROJECT_VERSION}")
+message(STATUS "PROJECT_VERSION_MAJOR: ${PROJECT_VERSION_MAJOR}")
+message(STATUS "PROJECT_VERSION_MINOR: ${PROJECT_VERSION_MINOR}")
+message(STATUS "PROJECT_VERSION_PATCH: ${PROJECT_VERSION_PATCH}")
 
 # ----------
 # manpage
 # ----------
-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND NOT EMSCRIPTEN)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND NOT EMSCRIPTEN)
     find_program(HELP2MAN_FOUND help2man)
-    if (HELP2MAN_FOUND)
-        ADD_CUSTOM_TARGET(man_unigen ALL DEPENDS unigen-bin)
-        ADD_CUSTOM_COMMAND(
-            POST_BUILD
+    if(HELP2MAN_FOUND)
+        add_custom_target(man_unigen
+            ALL
+            DEPENDS unigen-bin
+        )
+
+        add_custom_command(
             TARGET man_unigen
+            POST_BUILD
             COMMAND help2man
             ARGS --version-string=${UNIGEN_FULL_VERSION} --help-option="-h" $<TARGET_FILE:unigen-bin> -o ${CMAKE_CURRENT_BINARY_DIR}/unigen.1
         )
-        INSTALL(
+
+        install(
             FILES ${CMAKE_CURRENT_BINARY_DIR}/unigen.1
             DESTINATION ${CMAKE_INSTALL_PREFIX}/man/man1)
+
         message(STATUS "Manpage will be created and installed")
     else()
-        MESSAGE(STATUS "Cannot find help2man, not creating manpage")
+        message(STATUS "Cannot find help2man, not creating manpage")
     endif()
 else()
-    MESSAGE(STATUS "Not on Linux, not creating manpage")
+    message(STATUS "Not on Linux, not creating manpage")
 endif()
-
-#query definitions
-get_directory_property( DirDefs DIRECTORY ${CMAKE_SOURCE_DIR} COMPILE_DEFINITIONS )
-set(COMPILE_DEFINES)
-foreach( d ${DirDefs} )
-    set(COMPILE_DEFINES "${COMPILE_DEFINES} -D${d}")
-endforeach()
-message(STATUS "All defines at startup: ${COMPILE_DEFINES}")
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
 
+# Collect all compile definitions set so far into a string for embedding
+# via @COMPILE_DEFINES@ in GitSHA1.cpp.in
+get_directory_property(DirDefs COMPILE_DEFINITIONS)
+set(COMPILE_DEFINES "")
+foreach(d ${DirDefs})
+    set(COMPILE_DEFINES "${COMPILE_DEFINES} -D${d}")
+endforeach()
+message(STATUS "All defines at startup: ${COMPILE_DEFINES}")
 
-# -----------------------------------------------------------------------------
-# headers
-# -----------------------------------------------------------------------------
 macro(unigen_add_public_header LIBTARGET HEADER)
     get_target_property(EXISTING_PUBLIC_HEADERS ${LIBTARGET} PUBLIC_HEADER)
     if(EXISTING_PUBLIC_HEADERS)
@@ -385,50 +343,162 @@ endmacro()
 # -----------------------------------------------------------------------------
 # Dependencies
 # -----------------------------------------------------------------------------
-option(NOZLIB "Don't use zlib" OFF)
-if (NOT NOZLIB AND NOT (STATIC_BINARY AND WIN32))
-    find_package(ZLIB)
-    IF (ZLIB_FOUND)
-        MESSAGE(STATUS "OK, Found ZLIB!")
-        include_directories(${ZLIB_INCLUDE_DIR})
-        link_directories(${ZLIB_LIB_DIR})
-        add_definitions( -DUSE_ZLIB )
-    ELSE (ZLIB_FOUND)
-        MESSAGE(STATUS "WARNING: Did not find ZLIB, gzipped file support will be disabled")
-    ENDIF (ZLIB_FOUND)
+# When building statically, prefer .a over .so for all find_library/find_package calls.
+# In-tree deps (cryptominisat, arjun, …) are built directly and unaffected by this;
+# it mainly controls how system libs are resolved.
+if(NOT BUILD_SHARED_LIBS)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so" ".dylib")
 endif()
-find_package(GMP REQUIRED)
-# arjun's exported target links PkgConfig::MPFR, cadical and cadiback
 find_package(PkgConfig REQUIRED)
+if(APPLE)
+    execute_process(COMMAND brew --prefix OUTPUT_VARIABLE _homebrew_prefix OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+    if(_homebrew_prefix)
+        set(ENV{PKG_CONFIG_PATH} "${_homebrew_prefix}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+    endif()
+endif()
+pkg_check_modules(GMP REQUIRED IMPORTED_TARGET gmp)
+find_library(GMPXX_LIBRARY NAMES gmpxx HINTS ${GMP_LIBRARY_DIRS})
+if(GMPXX_LIBRARY)
+    get_property(_gmp_iface_libs TARGET PkgConfig::GMP PROPERTY INTERFACE_LINK_LIBRARIES)
+    set_property(TARGET PkgConfig::GMP PROPERTY INTERFACE_LINK_LIBRARIES "${GMPXX_LIBRARY}" ${_gmp_iface_libs})
+endif()
 pkg_check_modules(MPFR REQUIRED IMPORTED_TARGET mpfr)
-set(cadical_DIR "" CACHE PATH "cadical build dir containing cadicalConfig.cmake")
-if(cadical_DIR AND NOT TARGET cadical)
-    find_package(cadical CONFIG REQUIRED HINTS "${cadical_DIR}")
-endif()
-set(cadiback_DIR "" CACHE PATH "cadiback build dir containing cadibackConfig.cmake")
-if(cadiback_DIR AND NOT TARGET cadiback)
-    find_package(cadiback CONFIG REQUIRED HINTS "${cadiback_DIR}")
-endif()
-find_package(cryptominisat5 CONFIG REQUIRED)
-find_package(approxmc CONFIG REQUIRED)
-find_package(arjun CONFIG REQUIRED)
-# pkg-config ignores CMAKE_FIND_LIBRARY_SUFFIXES, so the deps' GMP and MPFR
-# targets name the .so even for a static binary
+# pkg_check_modules resolves libraries via pkg-config, which ignores
+# CMAKE_FIND_LIBRARY_SUFFIXES and may return .so paths even when we need
+# .a for a fully static binary.  Override GMP and MPFR targets here.
 if(STATIC_BINARY)
-    find_library(_MPFR_STATIC_LIB NAMES libmpfr.a HINTS /usr/local/lib ${MPFR_LIBRARY_DIRS})
+    # MPFR: its interface is just the mpfr library itself.
+    find_library(_MPFR_STATIC_LIB NAMES libmpfr.a
+        HINTS /usr/local/lib ${MPFR_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    if(NOT _MPFR_STATIC_LIB)
+        find_library(_MPFR_STATIC_LIB NAMES libmpfr.a HINTS ${MPFR_LIBRARY_DIRS})
+    endif()
     if(_MPFR_STATIC_LIB)
         set_property(TARGET PkgConfig::MPFR PROPERTY INTERFACE_LINK_LIBRARIES "${_MPFR_STATIC_LIB}")
+        message(STATUS "Static MPFR: ${_MPFR_STATIC_LIB}")
     else()
         message(WARNING "Static libmpfr.a not found; static link may fail")
     endif()
-    if(TARGET PkgConfig::GMP)
-        find_library(_GMP_STATIC_LIB NAMES libgmp.a HINTS /usr/local/lib)
-        if(_GMP_STATIC_LIB)
+    # GMP: its interface is [gmpxx, gmp].  Find static gmp and rebuild the list,
+    # keeping the already-resolved gmpxx path (which find_library got right via suffix order).
+    find_library(_GMP_STATIC_LIB NAMES libgmp.a
+        HINTS /usr/local/lib ${GMP_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    if(NOT _GMP_STATIC_LIB)
+        find_library(_GMP_STATIC_LIB NAMES libgmp.a HINTS ${GMP_LIBRARY_DIRS})
+    endif()
+    if(_GMP_STATIC_LIB)
+        if(GMPXX_LIBRARY)
             set_property(TARGET PkgConfig::GMP PROPERTY INTERFACE_LINK_LIBRARIES
                 "${GMPXX_LIBRARY}" "${_GMP_STATIC_LIB}")
         else()
-            message(WARNING "Static libgmp.a not found; static link may fail")
+            set_property(TARGET PkgConfig::GMP PROPERTY INTERFACE_LINK_LIBRARIES "${_GMP_STATIC_LIB}")
         endif()
+        message(STATUS "Static GMP: ${_GMP_STATIC_LIB}")
+    else()
+        message(WARNING "Static libgmp.a not found; static link may fail")
+    endif()
+endif()
+
+include(FetchContent)
+# FetchContent_Populate with declared details is deprecated in CMake 3.30+ (CMP0169).
+# We call it intentionally to clone-only without add_subdirectory, so silence the warning.
+if(POLICY CMP0169)
+    cmake_policy(SET CMP0169 OLD)
+endif()
+
+
+# Deps built in-tree must not build their own tests: their gtest targets clash
+set(_unigen_enable_testing ${ENABLE_TESTING})
+set(ENABLE_TESTING OFF)
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+
+# ---- cadical, cadiback, sbva (deps of cryptominisat and arjun) ----
+# Not used by unigen directly. Pre-built ones are imported so arjun's exported
+# target resolves them to library paths, not bare -l flags. Sibling repos are
+# added here, else cryptominisat and arjun would fetch them from GitHub and mix
+# them with the sibling cryptominisat and arjun.
+foreach(_dep cadical cadiback sbva)
+    set(${_dep}_DIR "" CACHE PATH "${_dep} build dir containing ${_dep}Config.cmake. Auto-resolved if empty.")
+    if(TARGET ${_dep})
+    elseif(${_dep}_DIR)
+        find_package(${_dep} CONFIG REQUIRED HINTS "${${_dep}_DIR}")
+        message(STATUS "${_dep}: using pre-built at ${${_dep}_DIR}")
+    elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../${_dep}/CMakeLists.txt")
+        add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../${_dep}"
+                         "${CMAKE_CURRENT_BINARY_DIR}/${_dep}-build")
+        message(STATUS "${_dep}: using sibling repo")
+    endif()
+endforeach()
+
+# ---- CryptoMiniSat5 ----
+set(cryptominisat5_DIR "" CACHE PATH "cryptominisat5 install/build prefix (contains lib/cmake/cryptominisat5/). Auto-resolved if empty.")
+if(NOT TARGET cryptominisat5)
+    if(cryptominisat5_DIR)
+        find_package(cryptominisat5 CONFIG REQUIRED HINTS "${cryptominisat5_DIR}")
+        message(STATUS "CryptoMiniSat5: using pre-built at ${cryptominisat5_DIR}")
+    elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../cryptominisat/CMakeLists.txt")
+        add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../cryptominisat"
+                         "${CMAKE_CURRENT_BINARY_DIR}/cryptominisat-build")
+        message(STATUS "CryptoMiniSat5: using sibling repo")
+    else()
+        FetchContent_Declare(cryptominisat5
+            GIT_REPOSITORY https://github.com/msoos/cryptominisat
+            GIT_TAG        master
+            GIT_SHALLOW    TRUE)
+        FetchContent_MakeAvailable(cryptominisat5)
+        message(STATUS "CryptoMiniSat5: fetched from GitHub")
+    endif()
+endif()
+
+# ---- Arjun ----
+set(arjun_DIR "" CACHE PATH "arjun install/build prefix (contains lib/cmake/arjun/). Auto-resolved if empty.")
+if(NOT TARGET arjun)
+    if(arjun_DIR)
+        find_package(arjun CONFIG REQUIRED HINTS "${arjun_DIR}")
+        message(STATUS "Arjun: using pre-built at ${arjun_DIR}")
+    elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../arjun/CMakeLists.txt")
+        add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../arjun"
+                         "${CMAKE_CURRENT_BINARY_DIR}/arjun-build")
+        message(STATUS "Arjun: using sibling repo")
+    else()
+        FetchContent_Declare(arjun
+            GIT_REPOSITORY https://github.com/meelgroup/arjun.git
+            GIT_TAG        master
+            GIT_SHALLOW    TRUE)
+        FetchContent_MakeAvailable(arjun)
+        message(STATUS "Arjun: fetched from GitHub")
+    endif()
+endif()
+
+# ---- ApproxMC ----
+set(approxmc_DIR "" CACHE PATH "approxmc install/build prefix (contains lib/cmake/approxmc/). Auto-resolved if empty.")
+if(NOT TARGET approxmc)
+    if(approxmc_DIR)
+        find_package(approxmc CONFIG REQUIRED HINTS "${approxmc_DIR}")
+        message(STATUS "ApproxMC: using pre-built at ${approxmc_DIR}")
+    elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../approxmc/CMakeLists.txt")
+        add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../approxmc"
+                         "${CMAKE_CURRENT_BINARY_DIR}/approxmc-build")
+        message(STATUS "ApproxMC: using sibling repo")
+    else()
+        FetchContent_Declare(approxmc
+            GIT_REPOSITORY https://github.com/meelgroup/approxmc.git
+            GIT_TAG        master
+            GIT_SHALLOW    TRUE)
+        FetchContent_MakeAvailable(approxmc)
+        message(STATUS "ApproxMC: fetched from GitHub")
+    endif()
+endif()
+set(ENABLE_TESTING ${_unigen_enable_testing})
+
+option(NOZLIB "Don't use zlib" OFF)
+if(NOT NOZLIB AND NOT (NOT BUILD_SHARED_LIBS AND WIN32))
+    find_package(ZLIB)
+    if(ZLIB_FOUND)
+        message(STATUS "OK, Found ZLIB!")
+        add_compile_definitions(USE_ZLIB)
+    else()
+        message(STATUS "WARNING: Did not find ZLIB, gzipped file support will be disabled")
     endif()
 endif()
 
@@ -448,20 +518,19 @@ configure_file(
     IMMEDIATE @ONLY
 )
 
-add_custom_target(uninstall
+add_custom_target(uninstall_unigen
     COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
 )
 
 # -----------------------------------------------------------------------------
 # Testing
 # -----------------------------------------------------------------------------
-if (ENABLE_TESTING)
+if(ENABLE_TESTING)
     enable_testing()
 
-    #use valgrind
     message(STATUS "Testing is enabled")
     set(UNIT_TEST_EXE_SUFFIX "Tests" CACHE STRING "Suffix for Unit test executable")
-    #add_subdirectory(tests)
+    add_subdirectory(tests)
 
 else()
     message(WARNING "Testing is disabled")
@@ -475,37 +544,42 @@ set(UNIGEN_TARGETS_FILENAME "unigenTargets.cmake")
 set(UNIGEN_CONFIG_FILENAME "unigenConfig.cmake")
 
 # Export targets
-set(MY_TARGETS unigen)
 export(
-    TARGETS ${MY_TARGETS}
+    TARGETS unigen
     FILE "${CMAKE_CURRENT_BINARY_DIR}/${UNIGEN_TARGETS_FILENAME}"
 )
 
-# Create unigenConfig file
-set(EXPORT_TYPE "Build-tree")
-set(CONF_INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}/include")
-configure_file(unigenConfig.cmake.in
-    "${CMAKE_CURRENT_BINARY_DIR}/${UNIGEN_CONFIG_FILENAME}" @ONLY
+# Build-tree config (absolute paths, for use without installation)
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/unigenConfig-buildtree.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/${UNIGEN_CONFIG_FILENAME}"
+    @ONLY
 )
 
 # Export this package to the CMake user package registry
-# Now the user can just use find_package(cryptominisat5) on their system
+# Now the user can just use find_package(unigen) on their system
 export(PACKAGE unigen)
 
-set(DEF_INSTALL_CMAKE_DIR lib/cmake/unigen)
-set(UNIGEN_INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH
-    "Installation directory for unigen CMake files")
+# Install-tree config and version files (relocatable via CMakePackageConfigHelpers)
+set(UNIGEN_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}")
+set(UNIGEN_VERSION_FILENAME "unigenConfigVersion.cmake")
 
+include(CMakePackageConfigHelpers)
+configure_package_config_file(unigenConfig.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/${UNIGEN_CONFIG_FILENAME}"
+    INSTALL_DESTINATION "${UNIGEN_INSTALL_CMAKE_DIR}"
+    PATH_VARS UNIGEN_INSTALL_INCLUDEDIR
+)
 
-# Create unigenConfig file
-set(EXPORT_TYPE "installed")
-set(CONF_INCLUDE_DIRS "${CMAKE_INSTALL_PREFIX}/include")
-configure_file(unigenConfig.cmake.in
-   "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/${UNIGEN_CONFIG_FILENAME}" @ONLY
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/${UNIGEN_VERSION_FILENAME}"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
 )
 
 install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/${UNIGEN_CONFIG_FILENAME}"
+    "${CMAKE_CURRENT_BINARY_DIR}/${UNIGEN_VERSION_FILENAME}"
     DESTINATION "${UNIGEN_INSTALL_CMAKE_DIR}"
 )
 
