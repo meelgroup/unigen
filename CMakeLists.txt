@@ -95,32 +95,20 @@ find_package(sbva CONFIG REQUIRED)
 
 option(SANITIZE "Use Clang sanitizers. You MUST use clang++ as the compiler for this to work" OFF)
 if (SANITIZE)
-    MESSAGE(WARNING " --Using clang sanitizers -- you MUST use clang++ or the compile WILL fail")
-    SET( CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS}  -lasan -lubsan " )
-    SET( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lasan -lubsan ")
+    message(WARNING " --Using clang sanitizers -- you MUST use clang++ or the compile WILL fail")
     add_compile_options("-fsanitize=address")
-    add_compile_options("-fsanitize=integer")
+    add_link_options("-fsanitize=address")
+    add_link_options("-fsanitize=undefined")
     add_compile_options("-fsanitize=undefined")
-
     add_compile_options("-fsanitize=null")
     add_compile_options("-fsanitize=alignment")
-    #add_compile_options("-fno-sanitize-recover")
-
+    add_compile_options("-fno-sanitize-recover")
     add_compile_options("-fsanitize=return")
     add_compile_options("-fsanitize=bounds")
-    add_compile_options("-fsanitize=float-divide-by-zero")
-    add_compile_options("-fsanitize=integer-divide-by-zero")
-    add_compile_options("-fsanitize=unsigned-integer-overflow")
-    add_compile_options("-fsanitize=signed-integer-overflow")
     add_compile_options("-fsanitize=bool")
     add_compile_options("-fsanitize=enum")
     add_compile_options("-fsanitize=float-cast-overflow")
-
-    #add_compile_options("-Weverything")
-    #add_compile_options("-Wshorten-64-to-32")
-    #add_compile_options("-Wweak-vtables")
-    #add_compile_options("-Wsign-conversion")
-    #add_compile_options("-Wconversion")
+    add_compile_options("$<$<CONFIG:RelWithDebInfo>:-D_GLIBCXX_ASSERTIONS>")
 endif()
 
 include(CheckCXXCompilerFlag)
@@ -149,9 +137,14 @@ endif()
 
 # static compilation
 option(BUILD_SHARED_LIBS "Build the shared library" ON)
-option(STATICCOMPILE "Compile to static executable" OFF)
+option(STATICCOMPILE "Same as BUILD_SHARED_LIBS=OFF" OFF)
 if (STATICCOMPILE)
     set(BUILD_SHARED_LIBS OFF)
+endif()
+if(NOT BUILD_SHARED_LIBS)
+    option(STATIC_BINARY "Link the unigen binary fully statically" ON)
+else()
+    option(STATIC_BINARY "Link the unigen binary fully statically" OFF)
 endif()
 
 
@@ -183,7 +176,7 @@ else()
 
     add_compile_options("$<$<CONFIG:DEBUG>:/Od>")
 
-    if (STATICCOMPILE)
+    if (STATIC_BINARY)
         # We statically link to reduce dependencies
         foreach(flag_var CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
             # /MD -- Causes the application to use the multithread-specific and DLL-specific version of the run-time library.
@@ -239,7 +232,7 @@ endif()
 
 option(ENABLE_TESTING "Enable testing" OFF)
 option(COVERAGE "Build with coverage check" OFF)
-if (COVERAGE AND NOT STATICCOMPILE)
+if (COVERAGE AND NOT STATIC_BINARY)
     MESSAGE(FATAL_ERROR "Coverage can only be computed on static compilation")
 endif()
 
@@ -289,28 +282,17 @@ endif()
 # -----------------------------------------------------------------------------
 # Staticcompile on Linux
 # -----------------------------------------------------------------------------
-if ((${CMAKE_SYSTEM_NAME} MATCHES "Linux") OR (${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
-    if(STATICCOMPILE)
-        MESSAGE(STATUS "Compiling for static library use")
-        if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -static ")
-        endif()
-
-        SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-
-        # removing -rdynamic that's automatically added
-        foreach (language CXX C)
-            set(VAR_TO_MODIFY "CMAKE_SHARED_LIBRARY_LINK_${language}_FLAGS")
-            string(REGEX REPLACE "(^| )-rdynamic($| )"
-                                 " "
-                                 replacement
-                                 "${${VAR_TO_MODIFY}}")
-            #message("Original (${VAR_TO_MODIFY}) is ${${VAR_TO_MODIFY}} replacement is ${replacement}")
-            set(${VAR_TO_MODIFY} "${replacement}" CACHE STRING "Default flags for ${build_config} configuration" FORCE)
-        endforeach()
-    else()
-        MESSAGE(STATUS "Compiling for dynamic library use")
-    endif()
+if(NOT BUILD_SHARED_LIBS)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so" ".dylib")
+endif()
+if(STATIC_BINARY AND ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    message(STATUS "Linking unigen binary fully statically")
+    set(CMAKE_EXE_LINKER_FLAGS
+        "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
+    # CMake's implicit link libs name the shared libgcc/libatomic variants, whose
+    # .a counterparts don't exist; under -static the driver links libgcc.a itself
+    set(CMAKE_C_IMPLICIT_LINK_LIBRARIES   "")
+    set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
 endif()
 
 set(DEF_INSTALL_CMAKE_DIR lib/cmake/unigen)
@@ -404,7 +386,7 @@ endmacro()
 # Dependencies
 # -----------------------------------------------------------------------------
 option(NOZLIB "Don't use zlib" OFF)
-if (NOT NOZLIB AND NOT (STATICCOMPILE AND WIN32))
+if (NOT NOZLIB AND NOT (STATIC_BINARY AND WIN32))
     find_package(ZLIB)
     IF (ZLIB_FOUND)
         MESSAGE(STATUS "OK, Found ZLIB!")
@@ -430,6 +412,25 @@ endif()
 find_package(cryptominisat5 CONFIG REQUIRED)
 find_package(approxmc CONFIG REQUIRED)
 find_package(arjun CONFIG REQUIRED)
+# pkg-config ignores CMAKE_FIND_LIBRARY_SUFFIXES, so the deps' GMP and MPFR
+# targets name the .so even for a static binary
+if(STATIC_BINARY)
+    find_library(_MPFR_STATIC_LIB NAMES libmpfr.a HINTS /usr/local/lib ${MPFR_LIBRARY_DIRS})
+    if(_MPFR_STATIC_LIB)
+        set_property(TARGET PkgConfig::MPFR PROPERTY INTERFACE_LINK_LIBRARIES "${_MPFR_STATIC_LIB}")
+    else()
+        message(WARNING "Static libmpfr.a not found; static link may fail")
+    endif()
+    if(TARGET PkgConfig::GMP)
+        find_library(_GMP_STATIC_LIB NAMES libgmp.a HINTS /usr/local/lib)
+        if(_GMP_STATIC_LIB)
+            set_property(TARGET PkgConfig::GMP PROPERTY INTERFACE_LINK_LIBRARIES
+                "${GMPXX_LIBRARY}" "${_GMP_STATIC_LIB}")
+        else()
+            message(WARNING "Static libgmp.a not found; static link may fail")
+        endif()
+    endif()
+endif()
 
 # -----------------------------------------------------------------------------
 # Provide an export name to be used by targets that wish to export themselves.

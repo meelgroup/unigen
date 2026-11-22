@@ -96,12 +96,13 @@ int full_sol = 0;
         .help(hhelp)
 
 void print_version() {
-    std::stringstream ss;
     cout << "c o UniGen SHA1: " << UniGen::UniG::get_version_sha1() << endl;
-    cout << "c o CMS SHA1: " << CMSat::SATSolver::get_version_sha1() << endl;
-    cout << "c o Arjun SHA1: " << ArjunNS::Arjun ::get_version_sha1() << endl;
-    cout << "c o Arjun SBVA SHA1: " << ArjunNS::Arjun::get_sbva_version_sha1() << endl;
     cout << "c o ApproxMC SHA1: " << ApproxMC::AppMC::get_version_sha1() << endl;
+    cout << "c o Arjun SHA1: " << ArjunNS::Arjun::get_version_sha1() << endl;
+    cout << "c o SBVA SHA1: " << ArjunNS::Arjun::get_sbva_version_sha1() << endl;
+    cout << "c o CMS SHA1: " << CMSat::SATSolver::get_version_sha1() << endl;
+    cout << "c o CaDiCaL SHA1: " << CMSat::SATSolver::get_cadical_version_sha1() << endl;
+    cout << "c o CadiBack SHA1: " << CMSat::SATSolver::get_cadiback_version_sha1() << endl;
     cout << CMSat::SATSolver::get_thanks_info("c o ");
     cout << ArjunNS::Arjun::get_thanks_info("c o ");
 }
