@@ -9,3 +9,4 @@ html/*.js
 build-native/
 build-slowdebug/
 build-wasm/
+result
