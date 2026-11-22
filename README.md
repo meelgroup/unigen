@@ -11,11 +11,12 @@ for credits.  A large part of the work is in CryptoMiniSat
 [here](https://github.com/msoos/cryptominisat).
 
 ## Installation
-You can try out UniGen [from your browser](https://www.msoos.org/unigen/).
+You can use UniGen online, straight [from your
+browser](https://www.msoos.org/unigen/)
 
-It is strongly recommended to not build, but to use the precompiled
-binaries as in our [release](https://github.com/meelgroup/unigen/releases).
-The second best thing to use is Nix. Simply [install
+Use of the [release binaries](https://github.com/meelgroup/unigen/releases) is
+_strongly_ encouraged, as UniGen requires a specific set of libraries to be
+installed. The second best thing to use is Nix. Simply [install
 nix](https://nixos.org/download/) and then:
 ```shell
 nix shell github:meelgroup/unigen#unigen
@@ -23,28 +24,11 @@ nix shell github:meelgroup/unigen#unigen
 
 Then you will have `unigen` binary available and ready to use.
 
-### Building from source
-A plain CMake build fetches the dependencies (CryptoMiniSat, Arjun, ApproxMC
-and theirs) from GitHub, or uses them from sibling directories if they are
-checked out next to UniGen:
-```shell
-mkdir build && cd build
-cmake ..
-make -j$(nproc)
-```
-
-With the dependencies already built, `scripts/build_norm.sh` (run from
-`build/`) builds against their `build/` directories. To build a static binary
-(`scripts/build_static.sh`), you first need GMP's static libraries:
-```shell
-wget https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz
-tar xf gmp-6.3.0.tar.xz
-cd gmp-6.3.0
-./configure --enable-static --enable-cxx --enable-shared --with-pic
-make -j8
-sudo make install
-cd ..
-```
+If this is somehow not what you want, you can also build it. See
+[BUILDING.md](BUILDING.md) for all the ways to build UniGen (dynamic, static,
+WebAssembly), and the [GitHub
+Action](https://github.com/meelgroup/unigen/actions/workflows/build.yml) for the
+specific set of steps.
 
 ## Sampling/Projection Set
 For some applications, one is not interested in solutions over all the
