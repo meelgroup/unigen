@@ -168,7 +168,8 @@ def unigen_opts(t):
     o += ["--autarky", str(r.randint(0, 1))]
     o += ["--eappmc", str(r.randint(0, 1))]
     o += ["--evivif", str(r.randint(0, 1))]
-    o += ["--eiter2", str(r.randint(0, 1))]
+    o += ["--eiter1", str(r.choice([0, 1, 2, 2, 3]))]
+    o += ["--eiter2", str(r.choice([0, 0, 1, 2]))]
     o += ["--sparse", str(r.randint(0, 1))]
     o += ["--reusemodels", str(r.randint(0, 1))]
     # without simplification the banning clauses pile up, and sampling slows down a lot
@@ -178,6 +179,14 @@ def unigen_opts(t):
         o += ["--multisample", "1"]
     if r.random() < 0.2:
         o += ["--kappa", str(r.choice([0.3, 0.638, 0.9]))]
+    if r.random() < 0.2:
+        o += ["--velimratio", str(r.choice([0.1, 0.5, 1.6, 4]))]
+    if r.random() < 0.2:
+        o += ["--epsilon", str(r.choice([0.3, 0.5, 0.8, 2]))]
+    if r.random() < 0.2:
+        o += ["--delta", str(r.choice([0.05, 0.2, 0.4]))]
+    if r.random() < 0.1:
+        o += ["--verb", str(r.choice([1, 2]))]
     extra = t.opts.extra.split()
     ret = []
     for name, val in zip(o[::2], o[1::2]):
@@ -196,7 +205,8 @@ def opt_val(opts, name):
 
 def run_unigen(t, fname, opts, nsamples):
     sfile = fname + ".samples"
-    cmd = [t.opts.unigen, "--verb", "0", "--seed", str(t.rnd.randint(0, 10**6)), "--samples", str(nsamples),
+    verb = [] if "--verb" in opts else ["--verb", "0"]
+    cmd = [t.opts.unigen] + verb + ["--seed", str(t.rnd.randint(0, 10**6)), "--samples", str(nsamples),
            "--sampleout", sfile] + opts + [fname]
     t.cmds.append(" ".join(cmd))
     t.log(t.cmds[-1])
