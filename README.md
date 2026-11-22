@@ -55,6 +55,25 @@ the variables it removed. By default only the sampling set is printed; with
 `--fullsol 1` every variable of the input gets a value, i.e. each sample is a
 full solution of the input CNF.
 
+## Python Package (pyunigen)
+UniGen is available as a Python package on
+[PyPI](https://pypi.org/project/pyunigen/):
+
+```shell
+pip install pyunigen
+```
+
+```python
+from pyunigen import Sampler
+
+c = Sampler()
+c.add_clause([1, 5])
+c.add_clause([10, 11, 12])
+cells, hashes, samples = c.sample(num=2, sampling_set=range(1, 5))
+```
+
+See [python/README.md](python/README.md) for all the options.
+
 ## Library Use
 UniGen simplifies the CNF with all of Arjun, samples the simplified CNF, and
 maps every sample back to the input's variables:

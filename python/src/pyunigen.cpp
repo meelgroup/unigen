@@ -24,11 +24,13 @@ THE SOFTWARE.
 **********************************/
 
 #include <Python.h>
-#include "../cryptominisat/src/cryptominisat.h"
-#include "../approxmc/src/approxmc.h"
+#include <cryptominisat5/cryptominisat.h>
+#include <approxmc/approxmc.h>
+#include <arjun/arjun.h>
 #include "../../src/unigen.h"
 
 #include <limits>
+#include <memory>
 
 #define MODULE_NAME "pyunigen"
 #define MODULE_DOC "Unigen almost uniform sampler."
@@ -38,6 +40,9 @@ struct PySampler {
     UniGen::UniG* unig;
     PyObject* sample_list = NULL;
     ApproxMC::AppMC* appmc;
+    std::unique_ptr<CMSat::FieldGen> fg;
+    // the clauses, given to Arjun or to ApproxMC at sample()
+    ArjunNS::SimplifiedCNF* cnf;
 
     // config
     int verbosity = 0;
@@ -46,6 +51,7 @@ struct PySampler {
     double epsilon;
     double delta;
     bool multisample = false;
+    bool arjun = true;
 
     // internal
     std::vector<CMSat::Lit> tmp_cl_lits;
@@ -57,14 +63,16 @@ struct PySampler {
 };
 
 static const char sampler_create_docstring[] = \
-"Sampler(verbosity=0, seed=1, delta=0.2, epsilon=0.8, kappa=0.638)\n\
+"Sampler(verbosity=0, seed=1, delta=0.2, epsilon=0.8, kappa=0.638, multisample=False, arjun=True)\n\
 Create Sampler object.\n\
 \n\
 :param verbosity: Verbosity level: 0: nothing printed; 15: very verbose.\n\
 :param seed: Random seed\n\
-:param delta: \n\
-:param epsilon: \n\
+:param delta: Confidence parameter of the count\n\
+:param epsilon: Tolerance parameter of the count\n\
 :param kappa: Uniformity parameter (see TACAS-15 paper)\n\
+:param multisample: Return multiple samples from each cell\n\
+:param arjun: Simplify the CNF with Arjun, mapping the samples back to its vars\n\
 ";
 
 /********** Internal Functions **********/
@@ -127,8 +135,8 @@ static int parse_sampling_set(PySampler *self, PyObject *sampling_set_obj)
     }
     Py_DECREF(iterator);
 
-    for(const auto& v: self->sampling_set) if (v >= (long int)self->appmc->nVars()) {
-        PyErr_Format(PyExc_ValueError, "Sampling set provided is incorrect, it has a variable in it, %li, that is larger than the total number of variables: %li", v+1, (long int)self->appmc->nVars());
+    for(const auto& v: self->sampling_set) if (v >= self->cnf->nVars()) {
+        PyErr_Format(PyExc_ValueError, "Sampling set provided is incorrect, it has a variable in it, %li, that is larger than the total number of variables: %li", (long int)v+1, (long int)self->cnf->nVars());
         return NULL;
     }
 
@@ -143,19 +151,25 @@ static void setup_sampler(PySampler *self, PyObject *args, PyObject *kwds)
     self->called_already = false;
     self->samples_needed = 5;
     self->samples_generated = 0;
-    self->appmc = new ApproxMC::AppMC;
+    self->fg = std::make_unique<ArjunNS::FGenMpz>();
+    self->appmc = new ApproxMC::AppMC(self->fg);
+    self->cnf = new ArjunNS::SimplifiedCNF(self->fg);
+    self->cnf->set_need_aig();
     self->unig = new UniGen::UniG(self->appmc);
     self->epsilon = self->appmc->get_epsilon();
     self->delta = self->appmc->get_delta();
     self->kappa = self->unig->get_kappa();
 
-    static char* kwlist[] = {"verbosity", "seed", "epsilon", "delta", "kappa", "multisample", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|iIdddp", kwlist,
-        &self->verbosity, &self->seed, &self->epsilon, &self->delta, &self->kappa, &self->multisample))
+    static char* kwlist[] = {"verbosity", "seed", "epsilon", "delta", "kappa", "multisample", "arjun", NULL};
+    int multisample = 0, arjun = 1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|iIdddpp", kwlist,
+        &self->verbosity, &self->seed, &self->epsilon, &self->delta, &self->kappa, &multisample, &arjun))
     {
         return;
     }
 
+    self->multisample = multisample;
+    self->arjun = arjun;
     if (self->verbosity < 0) {
         PyErr_SetString(PyExc_ValueError, "verbosity must be at least 0");
         return;
@@ -237,8 +251,8 @@ static int parse_clause(PySampler *self, PyObject *clause, std::vector<CMSat::Li
         lits.push_back(CMSat::Lit(var, sign));
     }
 
-    if (!lits.empty() && max_var >= (long int)self->appmc->nVars()) {
-        self->appmc->new_vars(max_var-(long int)self->appmc->nVars()+1);
+    if (!lits.empty() && max_var >= (long int)self->cnf->nVars()) {
+        self->cnf->new_vars(max_var-(long int)self->cnf->nVars()+1);
     }
 
     Py_DECREF(iterator);
@@ -255,7 +269,7 @@ static int _add_clause(PySampler *self, PyObject *clause)
     if (!parse_clause(self, clause, self->tmp_cl_lits)) {
         return 0;
     }
-    self->appmc->add_clause(self->tmp_cl_lits);
+    self->cnf->add_clause(self->tmp_cl_lits);
 
     return 1;
 }
@@ -361,7 +375,7 @@ static PyObject* sample(PySampler *self, PyObject *args, PyObject *kwds)
     }
     if (sampling_set_obj == NULL) {
         assert(self->sampling_set.empty());
-        for(uint32_t i = 0; i < self->appmc->nVars(); i++) self->sampling_set.push_back(i);
+        for(uint32_t i = 0; i < self->cnf->nVars(); i++) self->sampling_set.push_back(i);
     }
 
     ApproxMC::SolCount sol_count;
@@ -369,10 +383,29 @@ static PyObject* sample(PySampler *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-
-    self->appmc->set_projection_set(self->sampling_set);
-
-    if (cell_hash_count_obj == NULL) {
+    self->cnf->set_sampl_vars(self->sampling_set);
+    bool sat = true;
+    if (self->arjun) {
+        sat = self->unig->simplify_with_arjun(*self->cnf);
+    } else {
+        self->appmc->new_vars(self->cnf->nVars());
+        for(const auto& cl: self->cnf->get_clauses()) self->appmc->add_clause(cl);
+        self->appmc->set_sampl_vars(self->sampling_set);
+    }
+    // Arjun takes the sampling vars in no clause out into a multiplier, 2^k
+    uint32_t mult_log2 = 0;
+    if (sat) {
+        const auto* mult = dynamic_cast<const ArjunNS::FMpz*>(self->appmc->get_multiplier_weight().get());
+        if (mult && mult->val > 1) mult_log2 = mpz_sizeinbase(mult->val.get_mpz_t(), 2) - 1;
+    }
+    if (cell_hash_count_obj != NULL) {
+        // the given count is of the input, the sampler needs that of the simplified CNF
+        if (sol_count.hashCount >= mult_log2) sol_count.hashCount -= mult_log2;
+        else {
+            sol_count.cellSolCount >>= (mult_log2 - sol_count.hashCount);
+            sol_count.hashCount = 0;
+        }
+    } else if (sat) {
     	sol_count = self->appmc->count();
     }
 
@@ -381,8 +414,16 @@ static PyObject* sample(PySampler *self, PyObject *args, PyObject *kwds)
         PyErr_SetString(PyExc_SystemError, "failed to create a list");
         return NULL;
     }
+    if (!sat || sol_count.cellSolCount == 0) {
+        PyObject *result = PyTuple_New((Py_ssize_t) 3);
+        PyTuple_SET_ITEM(result, 0, PyLong_FromLong(0));
+        PyTuple_SET_ITEM(result, 1, PyLong_FromLong(0));
+        PyTuple_SET_ITEM(result, 2, self->sample_list);
+        return result;
+    }
     self->unig->set_full_sampling_vars(self->sampling_set);
     self->unig->sample(&sol_count, self->samples_needed);
+    sol_count.hashCount += mult_log2;
 
     PyObject *result = PyTuple_New((Py_ssize_t) 3);
     if (result == NULL) {
@@ -412,6 +453,8 @@ static void PySampler_dealloc(PySampler* self)
 {
     delete self->unig;
     delete self->appmc;
+    delete self->cnf;
+    self->fg.reset();
     Py_TYPE(self)->tp_free ((PyObject*) self);
 }
 
@@ -423,6 +466,9 @@ static int PySampler_init(PySampler *self, PyObject *args, PyObject *kwds)
 
     if (self->appmc != NULL) {
         delete self->appmc;
+    }
+    if (self->cnf != NULL) {
+        delete self->cnf;
     }
 
     setup_sampler(self, args, kwds);

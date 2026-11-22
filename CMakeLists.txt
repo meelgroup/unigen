@@ -73,6 +73,8 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 # generate JSON file of compile commands -- useful for code extension
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
+option(BUILD_PYTHON_EXTENSION "Build the pyunigen Python extension module" OFF)
+
 # static compilation
 option(BUILD_SHARED_LIBS "Build the shared library" ON)
 # STATIC_BINARY: link the unigen executable fully statically. Defaults to ON
@@ -274,7 +276,12 @@ endfunction()
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/GetGitSHA1.cmake")
 get_git_sha1(GIT_SHA1)
 message(STATUS "GIT hash found: ${GIT_SHA1}")
-set(UNIGEN_FULL_VERSION "2.7.0")
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/pyproject.toml" PYPROJECT_TOML)
+string(REGEX MATCH "version = \"([0-9]+\\.[0-9]+\\.[0-9]+)\"" _ "${PYPROJECT_TOML}")
+set(UNIGEN_FULL_VERSION "${CMAKE_MATCH_1}")
+if(NOT UNIGEN_FULL_VERSION)
+    message(FATAL_ERROR "Could not parse version from pyproject.toml")
+endif()
 
 string(REPLACE "." ";" UNIGEN_FULL_VERSION_LIST ${UNIGEN_FULL_VERSION})
 SetVersionNumber("PROJECT" ${UNIGEN_FULL_VERSION_LIST})
@@ -356,6 +363,12 @@ if(APPLE)
         set(ENV{PKG_CONFIG_PATH} "${_homebrew_prefix}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
     endif()
 endif()
+# A source-built static GMP typically lacks -fPIC and cannot go into the
+# Python extension (.so) on Linux, so look for the shared ones then
+if(BUILD_PYTHON_EXTENSION AND UNIX AND NOT APPLE)
+    set(_saved_find_suffixes "${CMAKE_FIND_LIBRARY_SUFFIXES}")
+    unset(CMAKE_FIND_LIBRARY_SUFFIXES)
+endif()
 pkg_check_modules(GMP REQUIRED IMPORTED_TARGET gmp)
 find_library(GMPXX_LIBRARY NAMES gmpxx HINTS ${GMP_LIBRARY_DIRS})
 if(GMPXX_LIBRARY)
@@ -363,6 +376,9 @@ if(GMPXX_LIBRARY)
     set_property(TARGET PkgConfig::GMP PROPERTY INTERFACE_LINK_LIBRARIES "${GMPXX_LIBRARY}" ${_gmp_iface_libs})
 endif()
 pkg_check_modules(MPFR REQUIRED IMPORTED_TARGET mpfr)
+if(BUILD_PYTHON_EXTENSION AND UNIX AND NOT APPLE)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES "${_saved_find_suffixes}")
+endif()
 # pkg_check_modules resolves libraries via pkg-config, which ignores
 # CMAKE_FIND_LIBRARY_SUFFIXES and may return .so paths even when we need
 # .a for a fully static binary.  Override GMP and MPFR targets here.
@@ -508,6 +524,17 @@ endif()
 set(UNIGEN_EXPORT_NAME "unigenTargets")
 
 add_subdirectory(src src-unigen)
+
+# Activated by scikit-build-core via -DBUILD_PYTHON_EXTENSION=ON
+if(BUILD_PYTHON_EXTENSION)
+    find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
+    python_add_library(pyunigen MODULE WITH_SOABI python/src/pyunigen.cpp)
+    target_compile_definitions(pyunigen PRIVATE UNIGEN_FULL_VERSION="${UNIGEN_FULL_VERSION}")
+    target_link_libraries(pyunigen PRIVATE unigen approxmc arjun PkgConfig::GMP PkgConfig::MPFR)
+    target_compile_features(pyunigen PRIVATE cxx_std_20)
+    # Only the extension goes into the wheel, not the library, headers or binary
+    install(TARGETS pyunigen DESTINATION . COMPONENT python)
+endif()
 
 # -----------------------------------------------------------------------------
 # Add uninstall target for makefiles

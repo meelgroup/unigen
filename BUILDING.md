@@ -71,6 +71,16 @@ dependencies (which must themselves be static), and
 `scripts/build_static_release.sh` also names the binary after the SHA1s of
 UniGen and its dependencies.
 
+## Python package
+
+`pip install pyunigen` installs the released wheels. To build the extension from
+a checkout (scikit-build-core, `-DBUILD_PYTHON_EXTENSION=ON` is set by
+`pyproject.toml`):
+
+```shell
+pip install .
+```
+
 ## WebAssembly
 
 The in-browser version is built with Emscripten. GMP and MPFR must first be
