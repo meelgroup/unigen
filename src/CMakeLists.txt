@@ -100,9 +100,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
         RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}
         INSTALL_RPATH_USE_LINK_PATH TRUE
     )
+    # the option parser reports errors by throwing; wasm disables catching by default
+    target_compile_options(unigen-bin PRIVATE -fexceptions)
     target_link_options(unigen-bin PRIVATE
+        "-fexceptions"
         "SHELL:-s WASM=1"
         "SHELL:-s ALLOW_MEMORY_GROWTH=1"
+        "SHELL:-s STACK_SIZE=10MB"
         "SHELL:-s EXPORTED_RUNTIME_METHODS='[\"callMain\", \"ccall\", \"cwrap\", \"FS\", \"print\"]'"
         "SHELL:-s FORCE_FILESYSTEM=1"
     )
