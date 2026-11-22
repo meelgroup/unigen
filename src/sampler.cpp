@@ -240,6 +240,7 @@ void Sampler::sample(Config _conf,
     const uint32_t num_samples
 ) {
     conf = _conf;
+    if (conf.full_sampling_vars.empty()) conf.full_sampling_vars = appmc->get_sampling_set();
     solver = appmc->get_solver();
     orig_num_vars = solver->nVars();
     startTime = cpuTimeTotal();
