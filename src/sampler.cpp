@@ -243,6 +243,7 @@ void Sampler::sample(Config _conf,
     if (conf.full_sampling_vars.empty()) conf.full_sampling_vars = appmc->get_sampling_set();
     solver = appmc->get_solver();
     orig_num_vars = solver->nVars();
+    dont_elim.clear();
     startTime = cpuTimeTotal();
     randomEngine.seed(appmc->get_seed());
 
@@ -283,22 +284,16 @@ vector<Lit> Sampler::set_num_hashes(
     return assumps;
 }
 
-void Sampler::simplify() {
-    verb_print(1, "[unig] simplifying");
-    solver->set_sls(1);
-    solver->set_intree_probe(1);
+// Every sample leaves XORs and banning clauses behind, on vars only they use.
+// BVE of those vars alone removes them; a full simplify of the CNF is costly
+void Sampler::remove_dead_hashes() {
+    verb_print(2, "[unig] removing dead hashes");
+    if (dont_elim.empty()) for(uint32_t v = 0; v < orig_num_vars; v++) dont_elim.push_back(Lit(v, false));
+    const string strategy = "occ-bve";
     solver->set_full_bve_iter_ratio(appmc->get_var_elim_ratio());
     solver->set_full_bve(1);
-    solver->set_distill(1);
-    solver->set_scc(1);
-
-    solver->simplify();
-
-    solver->set_sls(0);
-    solver->set_intree_probe(0);
+    solver->simplify(&dont_elim, &strategy);
     solver->set_full_bve(0);
-    solver->set_distill(0);
-    //solver->set_scc(0);
 }
 
 void Sampler::generate_samples(const uint32_t num_samples_needed) {
@@ -414,9 +409,7 @@ void Sampler::gen_n_samples(
         if (ok) {
             i++;
         }
-        if (appmc->get_simplify() >= 1) {
-            simplify();
-        }
+        if (appmc->get_simplify() >= 1) remove_dead_hashes();
     }
 }
 

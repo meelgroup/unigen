@@ -141,7 +141,7 @@ private:
         uint32_t num_wanted,
         map<uint64_t, Hash>& hashes
     );
-    void simplify();
+    void remove_dead_hashes();
 
     ////////////////
     //Helper functions
@@ -176,6 +176,7 @@ private:
     double startTime;
     std::mt19937 randomEngine;
     uint32_t orig_num_vars;
+    vector<Lit> dont_elim;
     double total_inter_simp_time = 0;
     uint32_t threshold; //precision, it's computed
 };
