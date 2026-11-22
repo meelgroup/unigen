@@ -113,6 +113,8 @@ private:
     uint32_t loThresh;
     uint32_t hiThresh;
     uint32_t thresh_sampler_gen;
+    uint32_t samples_needed = 0;
+    uint32_t samples_out = 0;
 
     Config conf;
     string gen_rnd_bits(const uint32_t size,
@@ -120,10 +122,9 @@ private:
     uint32_t sols_to_return(uint32_t numSolutions);
     void add_Sampler_options();
     bool gen_rhs();
-    uint32_t gen_n_samples(
-        const uint32_t samples
+    void gen_n_samples(
+        const uint32_t num_calls
         , uint32_t* lastSuccessfulHashOffset
-        , const uint32_t num_samples_needed
     );
     Hash add_hash(uint32_t total_num_hashes);
     string binary(const uint32_t x, const uint32_t length);

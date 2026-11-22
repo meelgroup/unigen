@@ -203,7 +203,8 @@ SolNum Sampler::bounded_sol_count(
         solver->add_clause(lits);
     }
 
-    if (solutions < maxSolutions) {
+    // with out_solutions, the caller picks the samples
+    if (solutions < maxSolutions && !out_solutions) {
         //Sampling -- output a random sample of N solutions
         if (solutions >= minSolutions) {
             assert(minSolutions > 0);
@@ -211,9 +212,10 @@ SolNum Sampler::bounded_sol_count(
             for (uint32_t i = 0; i < models.size(); i++) modelIndices.push_back(i);
             std::shuffle(modelIndices.begin(), modelIndices.end(), randomEngine);
 
-            for (uint32_t i = 0; i < sols_to_return(solutions); i++) {
+            for (uint32_t i = 0; i < sols_to_return(solutions) && samples_out < samples_needed; i++) {
                 const auto& model = models.at(modelIndices.at(i));
                 callback_func(get_solution_ints(model), callback_func_data);
+                samples_out++;
             }
         }
     }
@@ -320,15 +322,13 @@ void Sampler::generate_samples(const uint32_t num_samples_needed) {
         << ", hiThresh: " << hiThresh
         << ", startiter: " << startiter);
 
-    uint32_t samples = 0;
+    samples_needed = num_samples_needed;
+    samples_out = 0;
     if (startiter > 0) {
         verb_print(1, "[unig] non-ideal sampling case");
         uint32_t lastSuccessfulHashOffset = 0;
-        while(samples < num_samples_needed) {
-            samples += gen_n_samples(
-                callsPerLoop,
-                &lastSuccessfulHashOffset,
-                num_samples_needed);
+        while(samples_out < num_samples_needed) {
+            gen_n_samples(callsPerLoop, &lastSuccessfulHashOffset);
         }
     } else {
         verb_print(1, "[unig] ideal sampling case");
@@ -347,7 +347,7 @@ void Sampler::generate_samples(const uint32_t num_samples_needed) {
         for (uint32_t i = 0; i < num_samples_needed; ++i) {
             auto it = out_solutions.begin();
             for (uint32_t j = uid(randomEngine); j > 0; --j) ++it;
-            samples++;
+            samples_out++;
             callback_func(*it, callback_func_data);
         }
     }
@@ -355,18 +355,15 @@ void Sampler::generate_samples(const uint32_t num_samples_needed) {
     verb_print(1, "[unig] Time to sample: "
             << cpuTimeTotal() - genStartTime << " s"
             << " -- Time count+samples: " << cpuTimeTotal() << " s");
-    verb_print(1, "[unig] Samples generated: " << samples);
+    verb_print(1, "[unig] Samples generated: " << samples_out);
 }
 
-uint32_t Sampler::gen_n_samples(
+void Sampler::gen_n_samples(
     const uint32_t num_calls
-    , uint32_t* lastSuccessfulHashOffset
-    , const uint32_t num_samples_needed)
+    , uint32_t* lastSuccessfulHashOffset)
 {
-    SparseData sparse_data(-1);
-    uint32_t num_samples = 0;
     uint32_t i = 0;
-    while(i < num_calls) {
+    while(i < num_calls && samples_out < samples_needed) {
         uint32_t hashOffsets[3];
         hashOffsets[0] = *lastSuccessfulHashOffset;
 
@@ -394,7 +391,6 @@ uint32_t Sampler::gen_n_samples(
             ).solutions;
             ok = (solutionCount < hiThresh && solutionCount >= loThresh);
             if (ok) {
-                num_samples += sols_to_return(num_samples_needed);
                 *lastSuccessfulHashOffset = currentHashOffset;
                 break;
             }
@@ -421,7 +417,6 @@ uint32_t Sampler::gen_n_samples(
             simplify();
         }
     }
-    return num_samples;
 }
 
 vector<int> Sampler::get_solution_ints(const vector<lbool>& model) {
